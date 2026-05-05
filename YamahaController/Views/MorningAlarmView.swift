@@ -51,6 +51,31 @@ struct MorningAlarmView: View {
                         .frame(width: 120)
                     }
 
+                    // Day-of-week selector
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Days")
+                            .foregroundColor(.secondary)
+                        HStack(spacing: 4) {
+                            ForEach(Array(zip(0..<7, ["Su","Mo","Tu","We","Th","Fr","Sa"])), id: \.0) { day, label in
+                                let selected = settings.morningWeekdays.contains(day)
+                                Button {
+                                    var days = settings.morningWeekdays
+                                    if selected { days.removeAll { $0 == day } }
+                                    else { days.append(day) }
+                                    if !days.isEmpty { settings.morningWeekdays = days }
+                                } label: {
+                                    Text(label)
+                                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                                        .frame(width: 28, height: 22)
+                                        .background(selected ? Color.accentColor : Color(white: 0.18))
+                                        .foregroundColor(selected ? .white : .secondary)
+                                        .cornerRadius(4)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+
                     if settings.morningSource == "net_radio" {
                         HStack {
                             Text("Preset")

@@ -13,7 +13,7 @@ class SchedulerService {
 
     // MARK: - Morning Alarm
 
-    func scheduleMorningAlarm(hour: Int, minute: Int, ip: String, source: String, preset: Int) {
+    func scheduleMorningAlarm(hour: Int, minute: Int, ip: String, source: String, preset: Int, weekdays: [Int] = [0,1,2,3,4,5,6]) {
         guard !ip.isEmpty else { return }
 
         let scriptURL = launchAgentsURL.appendingPathComponent("\(morningLabel).sh")
@@ -38,7 +38,8 @@ class SchedulerService {
             label: morningLabel,
             programArgs: ["/bin/bash", scriptURL.path],
             hour: hour,
-            minute: minute
+            minute: minute,
+            weekdays: weekdays
         )
 
         do {
@@ -119,8 +120,43 @@ class SchedulerService {
 
     // MARK: - plist builder
 
-    private func buildPlist(label: String, programArgs: [String], hour: Int, minute: Int) -> String {
+    private func buildPlist(label: String, programArgs: [String], hour: Int, minute: Int, weekdays: [Int] = []) -> String {
         let argsXML = programArgs.map { "        <string>\($0)</string>" }.joined(separator: "\n")
+
+        // If all 7 days or no filter → fire every day (no Weekday key)
+        let allDays = weekdays.isEmpty || weekdays.count == 7
+        let calendarInterval: String
+        if allDays {
+            calendarInterval = """
+                <key>StartCalendarInterval</key>
+                <dict>
+                    <key>Hour</key>
+                    <integer>\(hour)</integer>
+                    <key>Minute</key>
+                    <integer>\(minute)</integer>
+                </dict>
+            """
+        } else {
+            let entries = weekdays.sorted().map { day in
+                """
+                    <dict>
+                        <key>Hour</key>
+                        <integer>\(hour)</integer>
+                        <key>Minute</key>
+                        <integer>\(minute)</integer>
+                        <key>Weekday</key>
+                        <integer>\(day)</integer>
+                    </dict>
+                """
+            }.joined(separator: "\n")
+            calendarInterval = """
+                <key>StartCalendarInterval</key>
+                <array>
+            \(entries)
+                </array>
+            """
+        }
+
         return """
         <?xml version="1.0" encoding="UTF-8"?>
         <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -132,13 +168,7 @@ class SchedulerService {
             <array>
         \(argsXML)
             </array>
-            <key>StartCalendarInterval</key>
-            <dict>
-                <key>Hour</key>
-                <integer>\(hour)</integer>
-                <key>Minute</key>
-                <integer>\(minute)</integer>
-            </dict>
+        \(calendarInterval)
             <key>RunAtLoad</key>
             <false/>
         </dict>

@@ -49,9 +49,11 @@ Four physical keycap-style buttons for quick source switching:
 Automatically powers on the receiver at a scheduled time using **launchd**:
 - Enable/disable toggle
 - Hour and minute picker
+- **Day-of-week selector** — toggle individual days (Su Mo Tu We Th Fr Sa); at least one day must remain selected
 - Source selector (Net Radio, Tuner, Bluetooth, AirPlay)
 - Preset picker (1–5) for Net Radio
 - Writes a `launchd` plist to `~/Library/LaunchAgents/` — fires even after Mac sleep/wake
+- When all 7 days are selected the plist fires every day; for a subset, separate `StartCalendarInterval` entries are generated per day
 
 ### Auto Off
 Automatically puts the receiver in standby at a scheduled time:
@@ -185,6 +187,7 @@ All settings are stored in `UserDefaults`:
 | `morning_minute` | Int | Alarm minute (0–59) |
 | `morning_source` | String | Input source for morning alarm |
 | `morning_preset` | Int | Net Radio preset (1–5) |
+| `morning_weekdays` | [Int] | Selected days (0=Sun … 6=Sat); default all 7 |
 | `autooff_enabled` | Bool | Auto off toggle |
 | `autooff_hour` | Int | Auto off hour (0–23) |
 | `autooff_minute` | Int | Auto off minute (0–59) |

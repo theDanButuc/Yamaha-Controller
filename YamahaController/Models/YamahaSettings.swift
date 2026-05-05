@@ -22,6 +22,9 @@ class YamahaSettings: ObservableObject {
     @Published var morningPreset: Int {
         didSet { UserDefaults.standard.set(morningPreset, forKey: "morning_preset"); scheduleMorning() }
     }
+    @Published var morningWeekdays: [Int] {
+        didSet { UserDefaults.standard.set(morningWeekdays, forKey: "morning_weekdays"); scheduleMorning() }
+    }
     @Published var autoOffEnabled: Bool {
         didSet { UserDefaults.standard.set(autoOffEnabled, forKey: "autooff_enabled"); scheduleAutoOff() }
     }
@@ -41,6 +44,8 @@ class YamahaSettings: ObservableObject {
         morningSource  = ud.string(forKey: "morning_source") ?? "net_radio"
         let preset     = ud.integer(forKey: "morning_preset")
         morningPreset  = preset == 0 ? 1 : preset
+        let savedDays  = ud.array(forKey: "morning_weekdays") as? [Int]
+        morningWeekdays = savedDays ?? [0,1,2,3,4,5,6]
         autoOffEnabled = ud.bool(forKey: "autooff_enabled")
         autoOffHour    = ud.integer(forKey: "autooff_hour")
         autoOffMinute  = ud.integer(forKey: "autooff_minute")
@@ -50,7 +55,8 @@ class YamahaSettings: ObservableObject {
         if morningEnabled {
             SchedulerService.shared.scheduleMorningAlarm(
                 hour: morningHour, minute: morningMinute,
-                ip: ipAddress, source: morningSource, preset: morningPreset
+                ip: ipAddress, source: morningSource, preset: morningPreset,
+                weekdays: morningWeekdays
             )
         } else {
             SchedulerService.shared.unscheduleMorningAlarm()
