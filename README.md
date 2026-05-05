@@ -191,12 +191,6 @@ All settings are stored in `UserDefaults`:
 
 ---
 
-## Contributors
-
-- **Dan Butuc** — design, product, development
-
----
-
 ## License
 
-MIT
+MIT License. Feel free to use Yamaha Controller and contribute.
