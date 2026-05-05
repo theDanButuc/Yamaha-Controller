@@ -1,0 +1,242 @@
+import SwiftUI
+
+struct IndustrialPowerSwitch: View {
+    let isOn: Bool
+    let isDisabled: Bool
+    let isBusy: Bool
+    let onTap: () -> Void
+
+    private let housingW: CGFloat = 64
+    private let housingH: CGFloat = 128
+    private let handleW: CGFloat = 54
+    private let handleH: CGFloat = 62
+    private let railPad: CGFloat = 10
+
+    private var topPos: CGFloat    { -(housingH / 2 - railPad - handleH / 2) }
+    private var bottomPos: CGFloat {   housingH / 2 - railPad - handleH / 2  }
+
+    @State private var handleY: CGFloat = 0
+
+    var body: some View {
+        VStack(spacing: 16) {
+            VStack(spacing: 3) {
+                ledBar
+                housing
+            }
+            .opacity(isDisabled ? 0.4 : 1)
+
+            if isBusy {
+                ProgressView().scaleEffect(0.8)
+            }
+        }
+        .onAppear { handleY = isOn ? bottomPos : topPos }
+        .onChange(of: isOn) { newVal in
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.65)) {
+                handleY = newVal ? bottomPos : topPos
+            }
+        }
+    }
+
+    private var ledBar: some View {
+        RoundedRectangle(cornerRadius: 3)
+            .fill(isOn
+                  ? Color(red: 0.06, green: 0.73, blue: 0.51)
+                  : Color(red: 0.35, green: 0.08, blue: 0.08))
+            .shadow(color: isOn
+                    ? Color(red: 0.06, green: 0.73, blue: 0.51).opacity(0.6)
+                    : .clear,
+                    radius: 8)
+            .frame(width: 44, height: 7)
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isOn)
+    }
+
+    private var housing: some View {
+        ZStack {
+            // Shell
+            RoundedRectangle(cornerRadius: 18)
+                .fill(Color(white: 0.1))
+                .overlay(RoundedRectangle(cornerRadius: 18)
+                    .stroke(Color(white: 0.18), lineWidth: 1.5))
+                .shadow(color: .black.opacity(0.7), radius: 16, x: 0, y: 8)
+
+            // Rail slot
+            RoundedRectangle(cornerRadius: 5)
+                .fill(Color.black)
+                .overlay(Rectangle().fill(Color(white: 0.12)).frame(width: 1))
+                .frame(width: 10, height: housingH - railPad * 2 - 4)
+
+            // Handle
+            handle
+                .offset(y: handleY)
+                .gesture(dragGesture)
+                .onTapGesture { if !isDisabled && !isBusy { onTap() } }
+
+            // Side labels
+            Text("OFF")
+                .font(.system(size: 7, weight: .bold, design: .monospaced))
+                .foregroundColor(Color(white: 0.3))
+                .rotationEffect(.degrees(90))
+                .offset(x: housingW / 2 - 6, y: topPos)
+
+            Text("ON")
+                .font(.system(size: 7, weight: .bold, design: .monospaced))
+                .foregroundColor(Color(white: 0.3))
+                .rotationEffect(.degrees(90))
+                .offset(x: housingW / 2 - 6, y: bottomPos)
+        }
+        .frame(width: housingW, height: housingH)
+    }
+
+    private var handle: some View {
+        RoundedRectangle(cornerRadius: 10)
+            .fill(isOn
+                  ? LinearGradient(
+                        colors: [Color(red: 0.18, green: 0.31, blue: 0.25),
+                                 Color(red: 0.08, green: 0.18, blue: 0.13)],
+                        startPoint: .top, endPoint: .bottom)
+                  : LinearGradient(
+                        colors: [Color(white: 0.25), Color(white: 0.15)],
+                        startPoint: .top, endPoint: .bottom))
+            .overlay(RoundedRectangle(cornerRadius: 10)
+                .stroke(Color(white: 0.25), lineWidth: 0.5))
+            .overlay(handleContent)
+            .shadow(color: .black.opacity(0.5), radius: 6, x: 0, y: 3)
+            .frame(width: handleW, height: handleH)
+            .animation(.spring(response: 0.3, dampingFraction: 0.65), value: isOn)
+    }
+
+    @ViewBuilder
+    private var handleContent: some View {
+        VStack(spacing: 5) {
+            // Grip lines
+            VStack(spacing: 4) {
+                ForEach(0..<2, id: \.self) { _ in
+                    Capsule()
+                        .fill(Color(white: 0, opacity: 0.45))
+                        .frame(width: 30, height: 1.5)
+                }
+            }
+            .padding(.top, 8)
+
+            Spacer()
+
+            // Status text
+            ZStack {
+                Text("STANDBY")
+                    .font(.system(size: 8, weight: .black, design: .monospaced))
+                    .foregroundColor(Color(white: 0.35))
+                    .tracking(1)
+                    .opacity(isOn ? 0 : 1)
+                Text("ONLINE")
+                    .font(.system(size: 8, weight: .black, design: .monospaced))
+                    .foregroundColor(Color(red: 0.25, green: 0.9, blue: 0.6))
+                    .tracking(1)
+                    .shadow(color: Color(red: 0.06, green: 0.73, blue: 0.51).opacity(0.8), radius: 5)
+                    .opacity(isOn ? 1 : 0)
+            }
+            .animation(.easeInOut(duration: 0.15), value: isOn)
+            .padding(.bottom, 10)
+        }
+    }
+
+    private var dragGesture: some Gesture {
+        DragGesture()
+            .onChanged { val in
+                guard !isDisabled && !isBusy else { return }
+                let base: CGFloat = isOn ? bottomPos : topPos
+                handleY = max(topPos, min(bottomPos, base + val.translation.height))
+            }
+            .onEnded { val in
+                guard !isDisabled && !isBusy else { return }
+                let base: CGFloat = isOn ? bottomPos : topPos
+                let finalPos = base + val.translation.height
+                let shouldBeOn = finalPos > (topPos + bottomPos) / 2
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.65)) {
+                    handleY = shouldBeOn ? bottomPos : topPos
+                }
+                if shouldBeOn != isOn { onTap() }
+            }
+    }
+}
+
+struct ManualControlsView: View {
+    @ObservedObject private var api = YamahaAPIService.shared
+    @State private var isBusy = false
+    @State private var feedback: String? = nil
+
+    private var isOn: Bool { api.powerState == .on }
+
+    var body: some View {
+        VStack(spacing: 6) {
+            HStack(alignment: .top, spacing: 28) {
+                VStack(spacing: 6) {
+                    IndustrialPowerSwitch(
+                        isOn: isOn,
+                        isDisabled: api.powerState == .unknown,
+                        isBusy: isBusy,
+                        onTap: togglePower
+                    )
+
+                    if isOn && !api.currentInput.isEmpty {
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(Color(red: 0.06, green: 0.73, blue: 0.51))
+                                .frame(width: 5, height: 5)
+                            Text(YamahaAPIService.formatInput(api.currentInput))
+                                .font(.system(size: 11, weight: .medium, design: .monospaced))
+                                .foregroundColor(Color(white: 0.55))
+                                .tracking(0.5)
+                        }
+                        .transition(.opacity)
+                        .animation(.easeInOut(duration: 0.3), value: api.currentInput)
+                    }
+
+                    if let feedback {
+                        Text(feedback)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                VStack(spacing: 6) {
+                    MixerFader(
+                        volume: api.volume,
+                        maxVolume: api.maxVolume > 0 ? api.maxVolume : 100,
+                        isDisabled: api.powerState != .on,
+                        onCommit: { newVol in api.setVolume(newVol) { _ in } },
+                        trackH: 120
+                    )
+
+                    Text("VOLUME")
+                        .font(.system(size: 11, weight: .medium, design: .monospaced))
+                        .foregroundColor(Color(white: 0.55))
+                        .tracking(0.5)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .center)
+        }
+    }
+
+    private func togglePower() {
+        isBusy = true
+        feedback = nil
+        switch api.powerState {
+        case .on:
+            api.setPower("standby") { error in finish(error: error) }
+        case .standby, .unknown:
+            api.powerOnSequence { error in finish(error: error) }
+        }
+    }
+
+    private func finish(error: Error?) {
+        isBusy = false
+        if let error {
+            feedback = error.localizedDescription
+        } else {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                self.api.fetchStatus()
+                self.feedback = nil
+            }
+        }
+    }
+}

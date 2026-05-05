@@ -1,0 +1,70 @@
+import SwiftUI
+
+struct PopoverView: View {
+    @State private var showingSettings = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // ── Header ────────────────────────────────────────────────
+            HStack(spacing: 8) {
+                Button {
+                    NSApplication.shared.terminate(nil)
+                } label: {
+                    Circle()
+                        .fill(Color(red: 0.98, green: 0.27, blue: 0.27))
+                        .frame(width: 13, height: 13)
+                }
+                .buttonStyle(.plain)
+                .help("Quit Yamaha Controller")
+
+                Text("Yamaha Controller")
+                    .font(.headline)
+                Spacer()
+                Button {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        showingSettings.toggle()
+                    }
+                } label: {
+                    Image(systemName: showingSettings ? "xmark.circle.fill" : "gear")
+                        .font(.system(size: 16))
+                        .foregroundColor(showingSettings ? .secondary : .primary)
+                }
+                .buttonStyle(.plain)
+                .help(showingSettings ? "Close Settings" : "Settings")
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 10)
+            .frame(height: 44)
+
+            Divider()
+
+            if showingSettings {
+                SettingsView()
+                    .frame(width: 300)
+                    .transition(.opacity)
+            } else {
+                VStack(alignment: .leading, spacing: 0) {
+                    ReceiverDisplayView()
+                        .padding(.horizontal)
+                        .padding(.top, 10)
+                        .padding(.bottom, 6)
+
+                    Divider()
+
+                    ManualControlsView()
+                        .padding()
+
+                    Divider()
+
+                    SceneButtonsView()
+                        .padding()
+
+                }
+                .frame(width: 300)
+                .transition(.opacity)
+
+            }
+        }
+        .frame(width: 300)
+    }
+}
