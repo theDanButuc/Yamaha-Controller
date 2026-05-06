@@ -1,5 +1,9 @@
 # Yamaha Controller
 
+<p align="center">
+  <img src="screenshots/icon.png" width="100" alt="App Icon" />
+</p>
+
 A native macOS menu bar application for controlling **Yamaha AV receivers** over your local network — no third-party apps, no subscriptions, no cloud.
 
 <p align="center">

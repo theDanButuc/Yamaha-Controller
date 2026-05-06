@@ -17,6 +17,15 @@ struct PopoverView: View {
                 .buttonStyle(.plain)
                 .help("Quit Yamaha Controller")
 
+                Image(nsImage: {
+                    if let url = Bundle.main.url(forResource: "yamaha_white", withExtension: "png"),
+                       let img = NSImage(contentsOf: url) { return img }
+                    return NSImage()
+                }())
+                .resizable()
+                .interpolation(.high)
+                .frame(width: 18, height: 18)
+
                 Text("Yamaha Controller")
                     .font(.headline)
                 Spacer()
