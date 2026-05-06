@@ -1,6 +1,6 @@
 # Yamaha Controller
 
-A native macOS menu bar application for controlling a **Yamaha TSR-400 AV receiver** over your local network — no third-party apps, no subscriptions, no cloud.
+A native macOS menu bar application for controlling **Yamaha AV receivers** over your local network — no third-party apps, no subscriptions, no cloud.
 
 <p align="center">
   <img src="screenshots/UI.png" width="300" alt="Main UI" />
