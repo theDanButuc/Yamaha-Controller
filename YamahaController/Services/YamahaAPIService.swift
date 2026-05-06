@@ -208,6 +208,53 @@ class YamahaAPIService: ObservableObject {
         }
     }
 
+    // Full source list — shared across Morning Alarm, Settings, and button config
+    static let allSources: [(label: String, value: String)] = [
+        ("TV (HDMI ARC)", "tv"),
+        ("HDMI 1",        "hdmi1"),
+        ("HDMI 2",        "hdmi2"),
+        ("HDMI 3",        "hdmi3"),
+        ("HDMI 4",        "hdmi4"),
+        ("HDMI 5",        "hdmi5"),
+        ("HDMI 6",        "hdmi6"),
+        ("Net Radio",     "net_radio"),
+        ("Spotify",       "spotify"),
+        ("Bluetooth",     "bluetooth"),
+        ("AirPlay",       "airplay"),
+        ("FM Tuner",      "tuner"),
+        ("Server",        "server"),
+        ("USB",           "usb"),
+        ("Audio 1",       "audio1"),
+        ("Audio 2",       "audio2"),
+        ("AV 1",          "av1"),
+        ("AV 2",          "av2"),
+    ]
+
+    // Short label for keycap buttons
+    static func buttonLabel(_ input: String) -> String {
+        switch input.lowercased() {
+        case "tv":        return "TV"
+        case "hdmi1":     return "HDMI1"
+        case "hdmi2":     return "HDMI2"
+        case "hdmi3":     return "HDMI3"
+        case "hdmi4":     return "HDMI4"
+        case "hdmi5":     return "HDMI5"
+        case "hdmi6":     return "HDMI6"
+        case "net_radio": return "RADIO"
+        case "spotify":   return "SPOTIFY"
+        case "bluetooth": return "BT"
+        case "airplay":   return "APLAY"
+        case "tuner":     return "TUNER"
+        case "server":    return "SERVER"
+        case "usb":       return "USB"
+        case "audio1":    return "AUD 1"
+        case "audio2":    return "AUD 2"
+        case "av1":       return "AV 1"
+        case "av2":       return "AV 2"
+        default:          return String(input.uppercased().prefix(6))
+        }
+    }
+
     static func formatInput(_ raw: String) -> String {
         switch raw.lowercased() {
         case "hdmi1":      return "HDMI 1"

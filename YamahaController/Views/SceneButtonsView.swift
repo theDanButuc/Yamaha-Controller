@@ -142,32 +142,23 @@ private struct KeycapButton: View {
     }
 }
 
-private struct InputSource {
-    let label: String
-    let input: String
-}
-
-private let sources: [InputSource] = [
-    InputSource(label: "TV",      input: "tv"),
-    InputSource(label: "XBOX",    input: "hdmi2"),
-    InputSource(label: "SPOTIFY", input: "spotify"),
-    InputSource(label: "RADIO",   input: "net_radio"),
-]
-
 struct SceneButtonsView: View {
-    @ObservedObject private var api = YamahaAPIService.shared
+    @ObservedObject private var api      = YamahaAPIService.shared
+    @ObservedObject private var settings = YamahaSettings.shared
 
     var body: some View {
+        let sources = [settings.button1Source, settings.button2Source,
+                       settings.button3Source, settings.button4Source]
         HStack(spacing: 6) {
-                ForEach(sources, id: \.input) { source in
-                    KeycapButton(
-                        label: source.label,
-                        isActive: api.currentInput.lowercased() == source.input,
-                        isDisabled: api.powerState != .on,
-                        onTap: { api.setInput(source.input) { _ in } }
-                    )
-                }
+            ForEach(sources, id: \.self) { input in
+                KeycapButton(
+                    label: YamahaAPIService.buttonLabel(input),
+                    isActive: api.currentInput.lowercased() == input.lowercased(),
+                    isDisabled: api.powerState != .on,
+                    onTap: { api.setInput(input) { _ in } }
+                )
             }
-            .frame(maxWidth: .infinity, alignment: .center)
+        }
+        .frame(maxWidth: .infinity, alignment: .center)
     }
 }

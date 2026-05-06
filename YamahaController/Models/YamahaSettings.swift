@@ -34,6 +34,21 @@ class YamahaSettings: ObservableObject {
     @Published var autoOffMinute: Int {
         didSet { UserDefaults.standard.set(autoOffMinute, forKey: "autooff_minute"); scheduleAutoOff() }
     }
+    @Published var autoOffWeekdays: [Int] {
+        didSet { UserDefaults.standard.set(autoOffWeekdays, forKey: "autooff_weekdays"); scheduleAutoOff() }
+    }
+    @Published var button1Source: String {
+        didSet { UserDefaults.standard.set(button1Source, forKey: "button1_source") }
+    }
+    @Published var button2Source: String {
+        didSet { UserDefaults.standard.set(button2Source, forKey: "button2_source") }
+    }
+    @Published var button3Source: String {
+        didSet { UserDefaults.standard.set(button3Source, forKey: "button3_source") }
+    }
+    @Published var button4Source: String {
+        didSet { UserDefaults.standard.set(button4Source, forKey: "button4_source") }
+    }
 
     private init() {
         let ud = UserDefaults.standard
@@ -46,9 +61,15 @@ class YamahaSettings: ObservableObject {
         morningPreset  = preset == 0 ? 1 : preset
         let savedDays  = ud.array(forKey: "morning_weekdays") as? [Int]
         morningWeekdays = savedDays ?? [0,1,2,3,4,5,6]
-        autoOffEnabled = ud.bool(forKey: "autooff_enabled")
-        autoOffHour    = ud.integer(forKey: "autooff_hour")
-        autoOffMinute  = ud.integer(forKey: "autooff_minute")
+        autoOffEnabled  = ud.bool(forKey: "autooff_enabled")
+        autoOffHour     = ud.integer(forKey: "autooff_hour")
+        autoOffMinute   = ud.integer(forKey: "autooff_minute")
+        let savedOffDays = ud.array(forKey: "autooff_weekdays") as? [Int]
+        autoOffWeekdays  = savedOffDays ?? [0,1,2,3,4,5,6]
+        button1Source   = ud.string(forKey: "button1_source") ?? "tv"
+        button2Source   = ud.string(forKey: "button2_source") ?? "hdmi2"
+        button3Source   = ud.string(forKey: "button3_source") ?? "spotify"
+        button4Source   = ud.string(forKey: "button4_source") ?? "net_radio"
     }
 
     private func scheduleMorning() {
@@ -65,7 +86,10 @@ class YamahaSettings: ObservableObject {
 
     private func scheduleAutoOff() {
         if autoOffEnabled {
-            SchedulerService.shared.scheduleAutoOff(hour: autoOffHour, minute: autoOffMinute, ip: ipAddress)
+            SchedulerService.shared.scheduleAutoOff(
+                hour: autoOffHour, minute: autoOffMinute,
+                ip: ipAddress, weekdays: autoOffWeekdays
+            )
         } else {
             SchedulerService.shared.unscheduleAutoOff()
         }

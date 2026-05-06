@@ -64,7 +64,7 @@ class SchedulerService {
 
     // MARK: - Auto Off
 
-    func scheduleAutoOff(hour: Int, minute: Int, ip: String) {
+    func scheduleAutoOff(hour: Int, minute: Int, ip: String, weekdays: [Int] = [0,1,2,3,4,5,6]) {
         guard !ip.isEmpty else { return }
 
         let plistURL = launchAgentsURL.appendingPathComponent("\(autoOffLabel).plist")
@@ -73,7 +73,8 @@ class SchedulerService {
             label: autoOffLabel,
             programArgs: ["/usr/bin/curl", "-s", "\(base)/main/setPower?power=standby"],
             hour: hour,
-            minute: minute
+            minute: minute,
+            weekdays: weekdays
         )
 
         do {
