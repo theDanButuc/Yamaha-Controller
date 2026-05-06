@@ -4,8 +4,14 @@ A native macOS menu bar application for controlling a **Yamaha TSR-400 AV receiv
 
 <p align="center">
   <img src="screenshots/UI.png" width="300" alt="Main UI" />
+</p>
+
+<p align="center">
+  <img src="screenshots/Settings 1.png" width="300" alt="Settings – IP &amp; Source Buttons" />
   &nbsp;&nbsp;&nbsp;
-  <img src="screenshots/Settings.png" width="300" alt="Settings" />
+  <img src="screenshots/Settings 2.png" width="300" alt="Settings – Morning Alarm" />
+  &nbsp;&nbsp;&nbsp;
+  <img src="screenshots/Settings 3.png" width="300" alt="Settings – Auto Off" />
 </p>
 
 ---
@@ -34,24 +40,19 @@ A mixer-style fader controls the receiver volume:
 - Fader position is user-controlled only and does not jump when the receiver reports a different volume after source changes
 
 ### Input Source Buttons
-Four physical keycap-style buttons for quick source switching:
-| Button | Input |
-|--------|-------|
-| TV | HDMI ARC (`tv`) |
-| XBOX | HDMI 2 (`hdmi2`) |
-| SPOTIFY | Spotify (`spotify`) |
-| RADIO | Net Radio (`net_radio`) |
+Four physical keycap-style buttons for quick source switching. Each button is **fully configurable** in Settings — assign any of the 18 supported YXC input sources to any button independently.
 
 - Active source is highlighted with a green glow and LED indicator
-- State syncs automatically with the receiver — changing source via the remote control is reflected in the UI within 30 seconds
+- Button labels update automatically to reflect your configured sources
+- State syncs with the receiver — changing source via the remote control is reflected in the UI within 30 seconds
 
 ### Morning Alarm
 Automatically powers on the receiver at a scheduled time using **launchd**:
 - Enable/disable toggle
 - Hour and minute picker
 - **Day-of-week selector** — toggle individual days (Su Mo Tu We Th Fr Sa); at least one day must remain selected
-- Source selector (Net Radio, Tuner, Bluetooth, AirPlay)
-- Preset picker (1–5) for Net Radio
+- **Source selector** — all 18 YXC input sources available
+- **Preset picker** (1–5) for Net Radio
 - Writes a `launchd` plist to `~/Library/LaunchAgents/` — fires even after Mac sleep/wake
 - When all 7 days are selected the plist fires every day; for a subset, separate `StartCalendarInterval` entries are generated per day
 
@@ -59,6 +60,7 @@ Automatically powers on the receiver at a scheduled time using **launchd**:
 Automatically puts the receiver in standby at a scheduled time:
 - Enable/disable toggle
 - Hour and minute picker
+- **Day-of-week selector** — same per-day granularity as Morning Alarm
 - Also managed via `launchd`
 
 ### Notifications
@@ -136,8 +138,8 @@ No external Swift packages. No CocoaPods. No SPM dependencies. Pure Apple framew
 ## Building from Source
 
 ```bash
-git clone https://github.com/danbutuc/yamaha-controller.git
-cd yamaha-controller
+git clone https://github.com/theDanButuc/Yamaha-Controller.git
+cd Yamaha-Controller
 bash scripts/build.sh
 ```
 
@@ -159,7 +161,7 @@ YamahaController/
 │   ├── ManualControlsView.swift    # Power switch + volume fader
 │   ├── VolumeView.swift            # MixerFader component
 │   ├── SceneButtonsView.swift      # Input source keycap buttons
-│   ├── SettingsView.swift          # IP + Schedule settings
+│   ├── SettingsView.swift          # IP + source button config + schedules
 │   ├── MorningAlarmView.swift      # Morning alarm controls
 │   ├── AutoOffView.swift           # Auto off controls
 │   └── StatusSectionView.swift     # Status section
@@ -182,6 +184,7 @@ All settings are stored in `UserDefaults`:
 | Key | Type | Description |
 |-----|------|-------------|
 | `yamaha_ip` | String | Receiver IP address |
+| `button1_source` … `button4_source` | String | Input source for each scene button |
 | `morning_enabled` | Bool | Morning alarm toggle |
 | `morning_hour` | Int | Alarm hour (0–23) |
 | `morning_minute` | Int | Alarm minute (0–59) |
@@ -191,6 +194,7 @@ All settings are stored in `UserDefaults`:
 | `autooff_enabled` | Bool | Auto off toggle |
 | `autooff_hour` | Int | Auto off hour (0–23) |
 | `autooff_minute` | Int | Auto off minute (0–59) |
+| `autooff_weekdays` | [Int] | Selected days (0=Sun … 6=Sat); default all 7 |
 
 ---
 
