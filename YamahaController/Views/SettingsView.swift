@@ -4,6 +4,7 @@ struct SettingsView: View {
     @ObservedObject private var settings = YamahaSettings.shared
     @StateObject private var discovery = DiscoveryService()
     @State private var draft: String = ""
+    @State private var showManual = false
     @State private var scheduleExpanded = false
     @State private var buttonsExpanded = false
     @FocusState private var focused: Bool
@@ -12,26 +13,8 @@ struct SettingsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
 
-                // ── Receiver IP ──────────────────────────────────────────
-                HStack {
-                    Text("Receiver IP")
-                        .foregroundColor(.secondary)
-                    Spacer()
-                    TextField("192.168.x.x", text: $draft)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 140)
-                        .focused($focused)
-                        .onAppear { draft = settings.ipAddress }
-                        .onSubmit { commit() }
-                }
-
-                // ── Discovery ────────────────────────────────────────────
+                // ── Receiver ─────────────────────────────────────────────
                 discoverSection
-
-                Button("Save IP") { commit() }
-                    .buttonStyle(.borderedProminent)
-                    .frame(maxWidth: .infinity)
-                    .controlSize(.regular)
 
                 Divider()
 
@@ -94,9 +77,9 @@ struct SettingsView: View {
     @ViewBuilder
     private var discoverSection: some View {
         if discovery.isScanning {
+            // ── Scanning ─────────────────────────────────────────────────
             HStack(spacing: 8) {
-                ProgressView()
-                    .controlSize(.small)
+                ProgressView().controlSize(.small)
                 Text("Scanning…")
                     .font(.caption)
                     .foregroundColor(.secondary)
@@ -107,23 +90,56 @@ struct SettingsView: View {
                     .foregroundColor(.secondary)
             }
         } else if !discovery.discovered.isEmpty {
+            // ── Results ──────────────────────────────────────────────────
             deviceList
         } else {
-            HStack(spacing: 8) {
+            // ── Idle ─────────────────────────────────────────────────────
+            VStack(alignment: .leading, spacing: 8) {
                 Button {
+                    showManual = false
                     discovery.startScan()
                 } label: {
-                    Label("Discover", systemImage: "antenna.radiowaves.left.and.right")
+                    Label("Discover Receiver", systemImage: "antenna.radiowaves.left.and.right")
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.borderedProminent)
                 .controlSize(.regular)
 
                 if let err = discovery.errorMessage {
                     Text(err)
                         .font(.caption)
                         .foregroundColor(.orange)
-                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                // Current IP (read-only summary)
+                if !settings.ipAddress.isEmpty && !showManual {
+                    HStack {
+                        Text("Connected to")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Text(settings.ipAddress)
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Button("Change") { showManual = true }
+                            .font(.caption)
+                            .buttonStyle(.plain)
+                            .foregroundColor(.accentColor)
+                    }
+                }
+
+                // Manual input — shown after error or "Change" tap
+                if showManual {
+                    HStack(spacing: 6) {
+                        TextField("192.168.x.x", text: $draft)
+                            .textFieldStyle(.roundedBorder)
+                            .onAppear { draft = settings.ipAddress }
+                            .onSubmit { commit() }
+                            .focused($focused)
+                        Button("Save") { commit() }
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.small)
+                    }
                 }
             }
         }
@@ -171,10 +187,9 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - Helpers
-
     private func commit() {
         settings.ipAddress = draft.trimmingCharacters(in: .whitespaces)
         focused = false
+        showManual = false
     }
 }

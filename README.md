@@ -63,6 +63,16 @@ Automatically puts the receiver in standby at a scheduled time:
 - **Day-of-week selector** — same per-day granularity as Morning Alarm
 - Also managed via `launchd`
 
+### Receiver Discovery
+The app automatically finds Yamaha receivers on the local network using Bonjour/mDNS:
+- **Discover Receiver** button scans the network and verifies each device via the YXC API
+- If one receiver is found, it is selected automatically
+- If multiple receivers are found, a list is shown for manual selection
+- Discovery times out after 10 seconds with an error message
+- Manual IP entry is available as fallback via the **Change** link
+
+Status is refreshed immediately every time the popover is opened — no waiting for the next poll cycle.
+
 ### Notifications
 The app sends a macOS notification when the receiver is turned on or off automatically by a schedule.
 
@@ -131,7 +141,8 @@ No external Swift packages. No CocoaPods. No SPM dependencies. Pure Apple framew
 2. Open the DMG and drag **Yamaha Controller** to your Applications folder
 3. Right-click → **Open** on first launch (app is ad-hoc signed, not notarized)
 4. Click the menu bar icon and open **Settings** (gear icon)
-5. Enter your receiver's IP address and click **Save IP**
+5. Click **Discover Receiver** — the app will find your Yamaha automatically
+6. If discovery fails, use the **Change** link to enter the IP address manually
 
 ---
 
@@ -169,7 +180,8 @@ YamahaController/
 │   └── YamahaSettings.swift        # UserDefaults-backed settings
 ├── Services/
 │   ├── YamahaAPIService.swift      # All YXC HTTP calls + polling
-│   └── SchedulerService.swift      # launchd plist management
+│   ├── SchedulerService.swift      # launchd plist management
+│   └── DiscoveryService.swift      # Bonjour/mDNS receiver discovery
 └── scripts/
     ├── build.sh                    # Compile + bundle + DMG
     └── make_dmg.sh                 # DMG creation helper

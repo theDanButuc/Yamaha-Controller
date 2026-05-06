@@ -15,6 +15,7 @@ class DiscoveryService: NSObject, ObservableObject {
     private var browser: NetServiceBrowser?
     private var pending: [NetService] = []
     private var timeoutTimer: Timer?
+    private var verifyTasks: [URLSessionDataTask] = []
 
     func startScan() {
         stopScan()
@@ -24,7 +25,7 @@ class DiscoveryService: NSObject, ObservableObject {
 
         let b = NetServiceBrowser()
         b.delegate = self
-        b.searchForServices(ofType: "_yamaha-musiccast._tcp.", inDomain: "local.")
+        b.searchForServices(ofType: "_http._tcp", inDomain: "local.")
         browser = b
 
         timeoutTimer = Timer.scheduledTimer(withTimeInterval: 10, repeats: false) { [weak self] _ in
@@ -44,7 +45,36 @@ class DiscoveryService: NSObject, ObservableObject {
         browser = nil
         pending.forEach { $0.stop() }
         pending.removeAll()
+        verifyTasks.forEach { $0.cancel() }
+        verifyTasks.removeAll()
         isScanning = false
+    }
+
+    // After resolving, verify the device responds to the YXC API
+    private func verify(host: String, name: String) {
+        guard let url = URL(string: "http://\(host)/YamahaExtendedControl/v1/main/getStatus") else { return }
+        var req = URLRequest(url: url, timeoutInterval: 3)
+        req.httpMethod = "GET"
+        let task = URLSession.shared.dataTask(with: req) { [weak self] data, _, _ in
+            guard let self else { return }
+            guard let data,
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  json["response_code"] != nil else { return }
+            DispatchQueue.main.async {
+                guard !self.discovered.contains(where: { $0.host == host }) else { return }
+                self.discovered.append(DiscoveredDevice(name: name, host: host))
+                if self.discovered.count == 1 {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                        if self.discovered.count == 1 {
+                            YamahaSettings.shared.ipAddress = self.discovered[0].host
+                            self.stopScan()
+                        }
+                    }
+                }
+            }
+        }
+        verifyTasks.append(task)
+        task.resume()
     }
 
     private func ipv4(from service: NetService) -> String? {
@@ -82,19 +112,7 @@ extension DiscoveryService: NetServiceDelegate {
     func netServiceDidResolveAddress(_ sender: NetService) {
         guard let host = ipv4(from: sender) else { return }
         let name = sender.name.isEmpty ? host : sender.name
-        DispatchQueue.main.async {
-            guard !self.discovered.contains(where: { $0.host == host }) else { return }
-            self.discovered.append(DiscoveredDevice(name: name, host: host))
-            // Single device found — auto-select after a brief moment to catch stragglers
-            if self.discovered.count == 1 {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                    if self.discovered.count == 1 {
-                        YamahaSettings.shared.ipAddress = self.discovered[0].host
-                        self.stopScan()
-                    }
-                }
-            }
-        }
+        verify(host: host, name: name)
     }
 
     func netService(_ sender: NetService, didNotResolve errorDict: [String: NSNumber]) {
