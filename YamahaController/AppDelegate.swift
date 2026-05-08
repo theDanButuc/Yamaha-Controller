@@ -10,6 +10,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
     private var popover: NSPopover?
     private var cancellables = Set<AnyCancellable>()
     private var eventMonitor: Any?
+    private var keyMonitor: Any?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -127,12 +128,50 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
         } else {
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
             NSApp.activate(ignoringOtherApps: true)
+            DispatchQueue.main.async { [weak self] in
+                self?.popover?.contentViewController?.view.window?.makeKey()
+            }
             YamahaAPIService.shared.fetchStatus()
+            startKeyMonitor()
         }
     }
 
     private func closePopover() {
         popover?.performClose(nil)
+        stopKeyMonitor()
+    }
+
+    private func startKeyMonitor() {
+        guard keyMonitor == nil else { return }
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            guard YamahaAPIService.shared.powerState == .on else { return event }
+            let flags = event.modifierFlags
+            // Arrow keys always include .numericPad alongside .command, so use contains() not ==
+            let cmdOnly = flags.contains(.command)
+                && !flags.contains(.shift) && !flags.contains(.option) && !flags.contains(.control)
+            let noMods = flags.intersection([.command, .shift, .option, .control]).isEmpty
+
+            if cmdOnly {
+                if event.keyCode == 126 {       // Cmd+↑
+                    YamahaAPIService.shared.volumeUp()
+                    return nil
+                } else if event.keyCode == 125 { // Cmd+↓
+                    YamahaAPIService.shared.volumeDown()
+                    return nil
+                }
+            } else if noMods, event.charactersIgnoringModifiers?.lowercased() == "m" {
+                YamahaAPIService.shared.toggleMute()
+                return nil
+            }
+            return event
+        }
+    }
+
+    private func stopKeyMonitor() {
+        if let monitor = keyMonitor {
+            NSEvent.removeMonitor(monitor)
+            keyMonitor = nil
+        }
     }
 
     // MARK: - Notifications

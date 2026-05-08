@@ -18,6 +18,32 @@ struct SettingsView: View {
 
                 Divider()
 
+                // ── Appearance ───────────────────────────────────────────
+                HStack {
+                    Text("Color Scheme")
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    HStack(spacing: 8) {
+                        ForEach([
+                            ("red",    Color(red: 1.00, green: 0.30, blue: 0.25)),
+                            ("orange", Color(red: 1.00, green: 0.60, blue: 0.10)),
+                            ("yellow", Color(red: 1.00, green: 0.95, blue: 0.15)),
+                            ("green",  Color(red: 0.18, green: 0.95, blue: 0.55)),
+                            ("blue",   Color(red: 0.25, green: 0.75, blue: 1.00)),
+                        ], id: \.0) { scheme, color in
+                            let selected = settings.colorScheme == scheme
+                            Circle()
+                                .fill(color)
+                                .frame(width: 16, height: 16)
+                                .overlay(Circle().stroke(Color.white.opacity(selected ? 0.9 : 0), lineWidth: 2))
+                                .shadow(color: selected ? color.opacity(0.8) : .clear, radius: 4)
+                                .onTapGesture { settings.colorScheme = scheme }
+                        }
+                    }
+                }
+
+                Divider()
+
                 // ── Source Buttons ───────────────────────────────────────
                 DisclosureGroup(isExpanded: $buttonsExpanded) {
                     VStack(alignment: .leading, spacing: 10) {

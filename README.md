@@ -8,14 +8,8 @@ A native macOS menu bar application for controlling **Yamaha AV receivers** over
 
 <p align="center">
   <img src="screenshots/UI.png" width="300" alt="Main UI" />
-</p>
-
-<p align="center">
-  <img src="screenshots/Settings 1.png" width="300" alt="Settings – IP &amp; Source Buttons" />
   &nbsp;&nbsp;&nbsp;
-  <img src="screenshots/Settings 2.png" width="300" alt="Settings – Morning Alarm" />
-  &nbsp;&nbsp;&nbsp;
-  <img src="screenshots/Settings 3.png" width="300" alt="Settings – Auto Off" />
+  <img src="screenshots/Settings.png" width="300" alt="Settings" />
 </p>
 
 ---
@@ -24,41 +18,60 @@ A native macOS menu bar application for controlling **Yamaha AV receivers** over
 
 ### Receiver Display
 A retro LCD-style panel at the top of the popover shows real-time receiver state:
-- **Current input source** — large phosphor-green display
+- **Current input source** — large phosphor-style display
 - **Volume** — in dB when available, raw value as fallback
 - **Sound mode** — DSP/surround program (Straight, Stereo, Surround Decoder, etc.)
 - **Now Playing** — for Spotify and Net Radio inputs, shows the current track title and artist/station name, refreshed every 8 seconds
+- **Album art** — thumbnail displayed for Spotify (always) and Net Radio (when the station provides it); gracefully falls back to text-only layout when unavailable
 - **Mute indicator** — highlighted in red when active
-- **Power dot** — green when on, dim when in standby
+- **Power dot** — accent-colored when on, dim when in standby
 
 ### Power Control
 An industrial toggle switch controls the receiver power state:
 - Drag or tap to toggle between **On** and **Standby**
 - Animated handle with ONLINE / STANDBY status text
-- Full **power-on sequence**: powers on → sets input → waits → recalls Net Radio preset (configurable delays)
+- **Last-source restore**: powers back on to whichever input was active before standby — Spotify, TV, Radio, or anything else
 
 ### Volume Control
 A mixer-style fader controls the receiver volume:
-- **Drag** to set volume
-- **Scroll wheel** (mouse or trackpad) to adjust incrementally — works anywhere in the popover while it's open
-- Fader position is user-controlled only and does not jump when the receiver reports a different volume after source changes
+- **Drag** to set volume — responds immediately on click, updates the receiver in real time while dragging
+- **Scroll wheel** — mouse wheel (1 step per click, direction always correct) and trackpad (smooth, accumulator-based) both work anywhere in the popover while it's open
+- **Keyboard shortcuts** — active while the popover is open:
+  - `Cmd ↑` / `Cmd ↓` — volume up / down (1 unit = 0.5 dB per press)
+  - `M` — toggle mute
+- Fader position syncs with the receiver: updates whenever volume changes via keyboard, scroll, or API polling
 
 ### Input Source Buttons
 Four physical keycap-style buttons for quick source switching. Each button is **fully configurable** in Settings — assign any of the 18 supported YXC input sources to any button independently.
 
-- Active source is highlighted with a green glow and LED indicator
+- Active source is highlighted with a colored glow and LED indicator
 - Button labels update automatically to reflect your configured sources
 - State syncs with the receiver — changing source via the remote control is reflected in the UI within 30 seconds
+
+### Transport Controls
+A compact row of transport and tuner buttons below the source keys, matching the physical remote layout:
+
+| Row | Buttons | Action |
+|-----|---------|--------|
+| 1 | `⏮` `▶` `⏭` | Previous / Play / Next (Spotify, Net Radio) |
+| 2 | `<<` `■` `‖` `>>` | Tune − / Sound mode cycle / Band toggle (FM↔AM) / Tune + |
+| 3 | `<` `>` | Preset − / Preset + |
+
+Context-sensitive: `■` stops playback on streaming sources and cycles the sound program on Tuner; `‖` pauses on streaming and toggles FM/AM on Tuner; `< >` cycle through net presets on Net Radio and switch tuner presets on Tuner.
+
+### Color Scheme
+Five accent colors to choose from in Settings — changes the LCD display, button LEDs, power switch, and all highlights across the entire UI simultaneously:
+
+🔴 Red &nbsp; 🟠 Orange &nbsp; 🟡 Yellow &nbsp; 🟢 Green &nbsp; 🔵 Blue
 
 ### Morning Alarm
 Automatically powers on the receiver at a scheduled time using **launchd**:
 - Enable/disable toggle
 - Hour and minute picker
-- **Day-of-week selector** — toggle individual days (Su Mo Tu We Th Fr Sa); at least one day must remain selected
+- **Day-of-week selector** — toggle individual days (Mo Tu We Th Fr Sa Su); at least one day must remain selected
 - **Source selector** — all 18 YXC input sources available
 - **Preset picker** (1–5) for Net Radio
 - Writes a `launchd` plist to `~/Library/LaunchAgents/` — fires even after Mac sleep/wake
-- When all 7 days are selected the plist fires every day; for a subset, separate `StartCalendarInterval` entries are generated per day
 
 ### Auto Off
 Automatically puts the receiver in standby at a scheduled time:
@@ -94,8 +107,16 @@ The app communicates with the receiver using the **Yamaha Extended Control (YXC)
 | `GET /main/setPower?power=on\|standby` | Power on / standby |
 | `GET /main/setInput?input={input}` | Switch input source |
 | `GET /main/setVolume?volume={n}` | Set volume level |
+| `GET /main/setMute?enable=true\|false` | Mute / unmute |
+| `GET /main/getSoundProgramList` | Fetch available DSP modes |
+| `GET /main/setSoundProgram?program={p}` | Set DSP/surround mode |
 | `GET /netusb/recallPreset?zone=main&num={n}` | Recall Net Radio preset |
-| `GET /netusb/getPlayInfo` | Now playing track / artist / station |
+| `GET /netusb/getPlayInfo` | Now playing track / artist / station / album art |
+| `GET /netusb/setPlayback?playback={action}` | Play / pause / stop / previous / next |
+| `GET /tuner/getPlayInfo` | Tuner band and frequency |
+| `GET /tuner/setBand?band=fm\|am` | Switch tuner band |
+| `GET /tuner/setFreq?band={b}&tuning=up\|down` | Step tuner frequency |
+| `GET /tuner/switchPreset?zone=main&dir=next\|previous` | Cycle tuner presets |
 
 ### Polling
 - Receiver status is polled every **30 seconds**
@@ -141,7 +162,7 @@ No external Swift packages. No CocoaPods. No SPM dependencies. Pure Apple framew
 
 ## Installation
 
-1. Download `YamahaController-v1.0.0.dmg` from [Releases](../../releases)
+1. Download `YamahaController-v1.1.0.dmg` from [Releases](../../releases)
 2. Open the DMG and drag **Yamaha Controller** to your Applications folder
 3. Right-click → **Open** on first launch (app is ad-hoc signed, not notarized)
 4. Click the menu bar icon and open **Settings** (gear icon)
@@ -168,20 +189,23 @@ The build script compiles all Swift sources with `swiftc`, assembles the `.app` 
 
 ```
 YamahaController/
-├── AppDelegate.swift               # NSStatusItem, NSPopover, menu bar icon
+├── AppDelegate.swift               # NSStatusItem, NSPopover, menu bar icon, key monitor
 ├── YamahaControllerApp.swift       # App entry point (@main)
 ├── Views/
 │   ├── PopoverView.swift           # Root popover layout
-│   ├── ReceiverDisplayView.swift   # LCD-style status display
+│   ├── ReceiverDisplayView.swift   # LCD-style status display with album art
 │   ├── ManualControlsView.swift    # Power switch + volume fader
 │   ├── VolumeView.swift            # MixerFader component
 │   ├── SceneButtonsView.swift      # Input source keycap buttons
-│   ├── SettingsView.swift          # IP + source button config + schedules
+│   ├── TransportControlsView.swift # Transport / tuner control buttons
+│   ├── KeycapComponents.swift      # Shared keycap shape and press style
+│   ├── SettingsView.swift          # IP + color scheme + source button config + schedules
 │   ├── MorningAlarmView.swift      # Morning alarm controls
 │   ├── AutoOffView.swift           # Auto off controls
 │   └── StatusSectionView.swift     # Status section
 ├── Models/
-│   └── YamahaSettings.swift        # UserDefaults-backed settings
+│   ├── YamahaSettings.swift        # UserDefaults-backed settings
+│   └── AppColors.swift             # Color scheme extension
 ├── Services/
 │   ├── YamahaAPIService.swift      # All YXC HTTP calls + polling
 │   ├── SchedulerService.swift      # launchd plist management
@@ -200,7 +224,9 @@ All settings are stored in `UserDefaults`:
 | Key | Type | Description |
 |-----|------|-------------|
 | `yamaha_ip` | String | Receiver IP address |
+| `color_scheme` | String | UI accent color (`red`, `orange`, `yellow`, `green`, `blue`) |
 | `button1_source` … `button4_source` | String | Input source for each scene button |
+| `last_input` | String | Last active input — restored on manual power on |
 | `morning_enabled` | Bool | Morning alarm toggle |
 | `morning_hour` | Int | Alarm hour (0–23) |
 | `morning_minute` | Int | Alarm minute (0–59) |

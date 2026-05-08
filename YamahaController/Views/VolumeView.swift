@@ -1,6 +1,13 @@
 import SwiftUI
 import AppKit
 
+// Reference-type box so the scroll closure always reads the latest volume,
+// not the stale value captured at onAppear time.
+private final class VolumeRef {
+    var value: Int
+    init(_ v: Int) { value = v }
+}
+
 struct MixerFader: View {
     let volume: Int
     let maxVolume: Int
@@ -26,6 +33,7 @@ struct MixerFader: View {
     @State private var isDragging = false
     @State private var scrollAccumulator: CGFloat = 0
     @State private var scrollMonitor: Any? = nil
+    @State private var volRef = VolumeRef(0)
 
     private func posY(for frac: Double) -> CGFloat {
         bottomPos - CGFloat(frac) * (bottomPos - topPos)
@@ -44,15 +52,23 @@ struct MixerFader: View {
         }
         .onAppear {
             handleY = posY(for: fraction)
-            // Scroll monitor — fires whenever the popover is visible
+            volRef.value = volume
+            let ref = volRef
             scrollMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { event in
                 guard !isDisabled else { return event }
-                let delta = event.scrollingDeltaY * 0.25
-                scrollAccumulator += delta
-                let step = Int(scrollAccumulator)
-                guard step != 0 else { return event }
-                scrollAccumulator -= CGFloat(step)
-                let newVol = max(0, min(maxVolume, volume + step))
+                let step: Int
+                if event.hasPreciseScrollingDeltas {
+                    scrollAccumulator += event.scrollingDeltaY * 0.25
+                    step = Int(scrollAccumulator)
+                    guard step != 0 else { return event }
+                    scrollAccumulator -= CGFloat(step)
+                } else {
+                    let raw = event.deltaY
+                    guard abs(raw) > 0.1 else { return event }
+                    step = raw > 0 ? 1 : -1
+                }
+                let newVol = max(0, min(maxVolume, ref.value + step))
+                ref.value = newVol  // update immediately so rapid scrolls stack correctly
                 DispatchQueue.main.async {
                     withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
                         handleY = posY(for: Double(newVol) / Double(maxVolume))
@@ -62,12 +78,18 @@ struct MixerFader: View {
                 return event
             }
         }
+        .onChange(of: volume) { newVal in
+            if !isDragging {
+                volRef.value = newVal
+                withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
+                    handleY = posY(for: Double(newVal) / Double(maxVolume))
+                }
+            }
+        }
         .onDisappear {
             if let m = scrollMonitor { NSEvent.removeMonitor(m) }
             scrollMonitor = nil
         }
-        // No onChange(of: volume) — fader position is user-controlled only,
-        // prevents jumping when source switch returns a different volume from API.
     }
 
     private var housing: some View {
@@ -127,7 +149,7 @@ struct MixerFader: View {
     }
 
     private var dragGesture: some Gesture {
-        DragGesture()
+        DragGesture(minimumDistance: 0)
             .onChanged { val in
                 guard !isDisabled else { return }
                 if !isDragging {
@@ -138,6 +160,8 @@ struct MixerFader: View {
                 let delta = -val.translation.height / range
                 let newFrac = max(0, min(1, dragStartFraction + delta))
                 handleY = posY(for: newFrac)
+                let newVol = Int((newFrac * Double(maxVolume)).rounded())
+                if newVol != volume { onCommit(newVol) }
             }
             .onEnded { val in
                 guard !isDisabled else { return }
@@ -146,9 +170,6 @@ struct MixerFader: View {
                 let delta = -val.translation.height / range
                 let newFrac = max(0, min(1, dragStartFraction + delta))
                 let newVol = Int((newFrac * Double(maxVolume)).rounded())
-                withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
-                    handleY = posY(for: newFrac)
-                }
                 onCommit(newVol)
             }
     }

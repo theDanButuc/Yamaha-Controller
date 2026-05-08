@@ -22,6 +22,10 @@ class YamahaAPIService: ObservableObject {
     @Published var actualVolumeDb: Double? = nil
     @Published var nowPlayingTrack: String = ""
     @Published var nowPlayingArtist: String = ""
+    @Published var albumArtURLString: String = ""
+    @Published var tunerBand: String = "fm"
+    @Published var soundProgramList: [String] = []
+    @Published var currentNetPreset: Int = 1
     @Published var activeScene: Int? = {
         UserDefaults.standard.object(forKey: "active_scene") as? Int
     }()
@@ -92,6 +96,9 @@ class YamahaAPIService: ObservableObject {
                 // Current input source
                 if let input = json["input"] as? String {
                     self.currentInput = input
+                    if newState == .on {
+                        UserDefaults.standard.set(input, forKey: "last_input")
+                    }
                 }
 
                 // Volume
@@ -115,8 +122,10 @@ class YamahaAPIService: ObservableObject {
                     self.setActiveScene(nil)
                     self.nowPlayingTrack = ""
                     self.nowPlayingArtist = ""
+                    self.albumArtURLString = ""
                 } else {
                     self.fetchPlayInfoIfNeeded()
+                    self.fetchTunerInfoIfNeeded()
                 }
             }
         }.resume()
@@ -145,6 +154,7 @@ class YamahaAPIService: ObservableObject {
         currentInput = input
         nowPlayingTrack = ""
         nowPlayingArtist = ""
+        albumArtURLString = ""
         URLSession.shared.dataTask(with: url) { [weak self] _, _, error in
             DispatchQueue.main.async {
                 if error != nil {
@@ -194,6 +204,88 @@ class YamahaAPIService: ObservableObject {
             DispatchQueue.main.async {
                 if error != nil { self?.setActiveScene(nil) }
             }
+        }.resume()
+    }
+
+    // MARK: - Transport / Tuner Commands
+
+    func setPlayback(_ playback: String) {
+        guard let url = URL(string: "\(baseURL)/netusb/setPlayback?playback=\(playback)") else { return }
+        URLSession.shared.dataTask(with: url) { _, _, _ in }.resume()
+    }
+
+    func fetchSoundProgramList(completion: @escaping () -> Void = {}) {
+        guard !soundProgramList.isEmpty else {
+            guard let url = URL(string: "\(baseURL)/main/getSoundProgramList") else { completion(); return }
+            URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
+                guard let self, let data,
+                      let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                      let list = json["sound_program_list"] as? [String] else {
+                    DispatchQueue.main.async { completion() }
+                    return
+                }
+                DispatchQueue.main.async {
+                    self.soundProgramList = list
+                    completion()
+                }
+            }.resume()
+            return
+        }
+        completion()
+    }
+
+    func cycleSoundProgram() {
+        fetchSoundProgramList { [weak self] in
+            guard let self, !self.soundProgramList.isEmpty else { return }
+            let current = self.soundProgram
+            let idx = self.soundProgramList.firstIndex(of: current) ?? -1
+            let next = self.soundProgramList[(idx + 1) % self.soundProgramList.count]
+            guard let url = URL(string: "\(self.baseURL)/main/setSoundProgram?program=\(next.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? next)") else { return }
+            URLSession.shared.dataTask(with: url) { [weak self] _, _, error in
+                if error == nil {
+                    DispatchQueue.main.async { self?.soundProgram = next }
+                }
+            }.resume()
+        }
+    }
+
+    func setBand(_ band: String) {
+        guard let url = URL(string: "\(baseURL)/tuner/setBand?band=\(band)") else { return }
+        tunerBand = band
+        URLSession.shared.dataTask(with: url) { _, _, _ in }.resume()
+    }
+
+    func tuneStep(_ dir: String) {
+        guard let url = URL(string: "\(baseURL)/tuner/setFreq?band=\(tunerBand)&tuning=\(dir)") else { return }
+        URLSession.shared.dataTask(with: url) { _, _, _ in }.resume()
+    }
+
+    func switchTunerPreset(_ dir: String) {
+        guard let url = URL(string: "\(baseURL)/tuner/switchPreset?zone=main&dir=\(dir)") else { return }
+        URLSession.shared.dataTask(with: url) { _, _, _ in }.resume()
+    }
+
+    func nextNetPreset() {
+        currentNetPreset = (currentNetPreset % 5) + 1
+        recallPreset(currentNetPreset) { _ in }
+    }
+
+    func prevNetPreset() {
+        currentNetPreset = currentNetPreset == 1 ? 5 : currentNetPreset - 1
+        recallPreset(currentNetPreset) { _ in }
+    }
+
+    // MARK: - Volume / Mute Helpers
+
+    func volumeUp()   { setVolume(min(volume + 1, maxVolume)) { _ in } }
+    func volumeDown() { setVolume(max(volume - 1, 0))         { _ in } }
+
+    func toggleMute() {
+        let enable = !isMuted
+        guard let url = URL(string: "\(baseURL)/main/setMute?enable=\(enable)") else { return }
+        isMuted = enable
+        URLSession.shared.dataTask(with: url) { [weak self] _, _, error in
+            DispatchQueue.main.async { if error != nil { self?.isMuted = !enable } }
         }.resume()
     }
 
@@ -296,6 +388,10 @@ class YamahaAPIService: ObservableObject {
               input == "net_radio" || input == "spotify" else {
             nowPlayingTrack = ""
             nowPlayingArtist = ""
+            albumArtURLString = ""
+            if powerState == .on && currentInput.lowercased() == "tuner" {
+                fetchTunerInfoIfNeeded()
+            }
             return
         }
         guard let url = URL(string: "\(baseURL)/netusb/getPlayInfo") else { return }
@@ -305,9 +401,30 @@ class YamahaAPIService: ObservableObject {
             DispatchQueue.main.async {
                 let track  = json["track"]  as? String ?? ""
                 let artist = json["artist"] as? String ?? ""
-                // net_radio often puts station in artist, song in track
                 self.nowPlayingTrack  = track
                 self.nowPlayingArtist = artist
+
+                if let artPath = json["albumart_url"] as? String,
+                   let artId   = json["albumart_id"]  as? Int,
+                   artId > 0,
+                   !artPath.isEmpty {
+                    self.albumArtURLString = "http://\(YamahaSettings.shared.ipAddress)\(artPath)"
+                } else {
+                    self.albumArtURLString = ""
+                }
+            }
+        }.resume()
+    }
+
+    func fetchTunerInfoIfNeeded() {
+        guard powerState == .on,
+              currentInput.lowercased() == "tuner",
+              let url = URL(string: "\(baseURL)/tuner/getPlayInfo") else { return }
+        URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
+            guard let self, let data,
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
+            DispatchQueue.main.async {
+                if let band = json["band"] as? String { self.tunerBand = band }
             }
         }.resume()
     }
@@ -315,22 +432,13 @@ class YamahaAPIService: ObservableObject {
     // MARK: - Sequence
 
     func powerOnSequence(completion: @escaping (Error?) -> Void) {
-        let source = YamahaSettings.shared.morningSource
-        let preset = YamahaSettings.shared.morningPreset
+        let lastInput = UserDefaults.standard.string(forKey: "last_input") ?? ""
 
         setPower("on") { error in
             if let error { completion(error); return }
+            guard !lastInput.isEmpty else { completion(nil); return }
             DispatchQueue.global().asyncAfter(deadline: .now() + 3) {
-                self.setInput(source) { error in
-                    if let error { completion(error); return }
-                    if source == "net_radio" {
-                        DispatchQueue.global().asyncAfter(deadline: .now() + 2) {
-                            self.recallPreset(preset, completion: completion)
-                        }
-                    } else {
-                        completion(nil)
-                    }
-                }
+                self.setInput(lastInput, completion: completion)
             }
         }
     }

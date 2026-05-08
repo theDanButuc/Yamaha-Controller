@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ReceiverDisplayView: View {
     @ObservedObject private var api = YamahaAPIService.shared
+    @ObservedObject private var settings = YamahaSettings.shared
 
     private var inputLabel: String {
         api.powerState == .on && !api.currentInput.isEmpty
@@ -28,6 +29,8 @@ struct ReceiverDisplayView: View {
                (input == "net_radio" || input == "spotify") &&
                (!api.nowPlayingTrack.isEmpty || !api.nowPlayingArtist.isEmpty)
     }
+
+    private var hasAlbumArt: Bool { hasNowPlaying && !api.albumArtURLString.isEmpty }
 
     private var isOn: Bool { api.powerState == .on }
 
@@ -68,11 +71,9 @@ struct ReceiverDisplayView: View {
                             .tracking(1)
                     }
                     Circle()
-                        .fill(isOn ? Color(red: 0.06, green: 0.73, blue: 0.51) : Color(white: 0.2))
+                        .fill(isOn ? lcdGreen : Color(white: 0.2))
                         .frame(width: 5, height: 5)
-                        .shadow(color: isOn
-                                ? Color(red: 0.06, green: 0.73, blue: 0.51).opacity(0.9) : .clear,
-                                radius: 4)
+                        .shadow(color: isOn ? lcdGreen.opacity(0.9) : .clear, radius: 4)
                 }
                 .padding(.horizontal, 10)
                 .padding(.top, 8)
@@ -94,23 +95,44 @@ struct ReceiverDisplayView: View {
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
 
-                    VStack(alignment: .leading, spacing: 2) {
-                        if !api.nowPlayingTrack.isEmpty {
-                            Text(api.nowPlayingTrack)
-                                .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                                .foregroundColor(lcdGreen)
-                                .shadow(color: lcdGlow, radius: 3)
-                                .lineLimit(1).minimumScaleFactor(0.7)
+                    HStack(alignment: .center, spacing: 8) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            if !api.nowPlayingTrack.isEmpty {
+                                Text(api.nowPlayingTrack)
+                                    .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                                    .foregroundColor(lcdGreen)
+                                    .shadow(color: lcdGlow, radius: 3)
+                                    .lineLimit(2).minimumScaleFactor(0.7)
+                            }
+                            if !api.nowPlayingArtist.isEmpty {
+                                Text(api.nowPlayingArtist)
+                                    .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                                    .foregroundColor(lcdAmber)
+                                    .shadow(color: lcdAmberGlow, radius: 2)
+                                    .lineLimit(1).minimumScaleFactor(0.7)
+                            }
                         }
-                        if !api.nowPlayingArtist.isEmpty {
-                            Text(api.nowPlayingArtist)
-                                .font(.system(size: 8, weight: .regular, design: .monospaced))
-                                .foregroundColor(lcdAmber)
-                                .shadow(color: lcdAmberGlow, radius: 2)
-                                .lineLimit(1).minimumScaleFactor(0.7)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                        if hasAlbumArt, let artURL = URL(string: api.albumArtURLString) {
+                            AsyncImage(url: artURL) { phase in
+                                switch phase {
+                                case .success(let image):
+                                    image.resizable().aspectRatio(contentMode: .fill)
+                                case .failure:
+                                    placeholderArt
+                                case .empty:
+                                    placeholderArt
+                                @unknown default:
+                                    placeholderArt
+                                }
+                            }
+                            .frame(width: 52, height: 52)
+                            .clipShape(RoundedRectangle(cornerRadius: 4))
+                            .overlay(RoundedRectangle(cornerRadius: 4)
+                                .stroke(lcdDim, lineWidth: 0.5))
                         }
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 10)
                 }
 
@@ -150,15 +172,26 @@ struct ReceiverDisplayView: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .frame(height: hasNowPlaying ? 130 : 96)
+        .frame(height: hasAlbumArt ? 150 : (hasNowPlaying ? 130 : 96))
         .animation(.easeInOut(duration: 0.3), value: api.powerState)
         .animation(.easeInOut(duration: 0.25), value: hasNowPlaying)
+        .animation(.easeInOut(duration: 0.25), value: hasAlbumArt)
         .animation(.easeInOut(duration: 0.2), value: api.currentInput)
     }
 
-    private var lcdGreen:     Color { Color(red: 0.18, green: 0.95, blue: 0.55) }
-    private var lcdGlow:      Color { Color(red: 0.06, green: 0.73, blue: 0.51).opacity(0.6) }
+    private var placeholderArt: some View {
+        RoundedRectangle(cornerRadius: 4)
+            .fill(lcdDim.opacity(0.2))
+            .overlay(
+                Image(systemName: "music.note")
+                    .font(.system(size: 14))
+                    .foregroundColor(lcdDim)
+            )
+    }
+
+    private var lcdGreen:     Color { settings.schemeColor }
+    private var lcdGlow:      Color { settings.schemeGlow }
     private var lcdAmber:     Color { Color(red: 1.00, green: 0.75, blue: 0.10) }
     private var lcdAmberGlow: Color { Color(red: 1.00, green: 0.65, blue: 0.00).opacity(0.5) }
-    private var lcdDim:       Color { Color(red: 0.15, green: 0.35, blue: 0.22) }
+    private var lcdDim:       Color { settings.schemeLcdDim }
 }

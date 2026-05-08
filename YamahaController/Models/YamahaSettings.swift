@@ -49,6 +49,9 @@ class YamahaSettings: ObservableObject {
     @Published var button4Source: String {
         didSet { UserDefaults.standard.set(button4Source, forKey: "button4_source") }
     }
+    @Published var colorScheme: String {
+        didSet { UserDefaults.standard.set(colorScheme, forKey: "color_scheme") }
+    }
 
     private init() {
         let ud = UserDefaults.standard
@@ -70,6 +73,7 @@ class YamahaSettings: ObservableObject {
         button2Source   = ud.string(forKey: "button2_source") ?? "hdmi2"
         button3Source   = ud.string(forKey: "button3_source") ?? "spotify"
         button4Source   = ud.string(forKey: "button4_source") ?? "net_radio"
+        colorScheme     = ud.string(forKey: "color_scheme") ?? "green"
     }
 
     private func scheduleMorning() {

@@ -6,6 +6,8 @@ struct IndustrialPowerSwitch: View {
     let isBusy: Bool
     let onTap: () -> Void
 
+    @ObservedObject private var settings = YamahaSettings.shared
+
     private let housingW: CGFloat = 64
     private let housingH: CGFloat = 128
     private let handleW: CGFloat = 54
@@ -39,13 +41,8 @@ struct IndustrialPowerSwitch: View {
 
     private var ledBar: some View {
         RoundedRectangle(cornerRadius: 3)
-            .fill(isOn
-                  ? Color(red: 0.06, green: 0.73, blue: 0.51)
-                  : Color(red: 0.35, green: 0.08, blue: 0.08))
-            .shadow(color: isOn
-                    ? Color(red: 0.06, green: 0.73, blue: 0.51).opacity(0.6)
-                    : .clear,
-                    radius: 8)
+            .fill(isOn ? settings.schemeMid : Color(red: 0.35, green: 0.08, blue: 0.08))
+            .shadow(color: isOn ? settings.schemeGlow : .clear, radius: 8)
             .frame(width: 44, height: 7)
             .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isOn)
     }
@@ -91,8 +88,7 @@ struct IndustrialPowerSwitch: View {
         RoundedRectangle(cornerRadius: 10)
             .fill(isOn
                   ? LinearGradient(
-                        colors: [Color(red: 0.18, green: 0.31, blue: 0.25),
-                                 Color(red: 0.08, green: 0.18, blue: 0.13)],
+                        colors: [settings.schemeDarkTop, settings.schemeDarkBottom],
                         startPoint: .top, endPoint: .bottom)
                   : LinearGradient(
                         colors: [Color(white: 0.25), Color(white: 0.15)],
@@ -129,9 +125,9 @@ struct IndustrialPowerSwitch: View {
                     .opacity(isOn ? 0 : 1)
                 Text("ONLINE")
                     .font(.system(size: 8, weight: .black, design: .monospaced))
-                    .foregroundColor(Color(red: 0.25, green: 0.9, blue: 0.6))
+                    .foregroundColor(settings.schemeColor)
                     .tracking(1)
-                    .shadow(color: Color(red: 0.06, green: 0.73, blue: 0.51).opacity(0.8), radius: 5)
+                    .shadow(color: settings.schemeMid.opacity(0.8), radius: 5)
                     .opacity(isOn ? 1 : 0)
             }
             .animation(.easeInOut(duration: 0.15), value: isOn)
@@ -161,6 +157,7 @@ struct IndustrialPowerSwitch: View {
 
 struct ManualControlsView: View {
     @ObservedObject private var api = YamahaAPIService.shared
+    @ObservedObject private var settings = YamahaSettings.shared
     @State private var isBusy = false
     @State private var feedback: String? = nil
 
@@ -180,7 +177,7 @@ struct ManualControlsView: View {
                     if isOn && !api.currentInput.isEmpty {
                         HStack(spacing: 4) {
                             Circle()
-                                .fill(Color(red: 0.06, green: 0.73, blue: 0.51))
+                                .fill(YamahaSettings.shared.schemeMid)
                                 .frame(width: 5, height: 5)
                             Text(YamahaAPIService.formatInput(api.currentInput))
                                 .font(.system(size: 11, weight: .medium, design: .monospaced))

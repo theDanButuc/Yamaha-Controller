@@ -1,5 +1,28 @@
 import SwiftUI
 
+private struct CloseButton: View {
+    let action: () -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                Circle()
+                    .fill(Color(red: 0.98, green: 0.27, blue: 0.27))
+                if isHovered {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 7, weight: .bold))
+                        .foregroundColor(Color(red: 0.55, green: 0.05, blue: 0.05))
+                }
+            }
+            .frame(width: 13, height: 13)
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovered = $0 }
+        .help("Quit Yamaha Controller")
+    }
+}
+
 struct PopoverView: View {
     @State private var showingSettings = false
 
@@ -7,15 +30,7 @@ struct PopoverView: View {
         VStack(spacing: 0) {
             // ── Header ────────────────────────────────────────────────
             HStack(spacing: 8) {
-                Button {
-                    NSApplication.shared.terminate(nil)
-                } label: {
-                    Circle()
-                        .fill(Color(red: 0.98, green: 0.27, blue: 0.27))
-                        .frame(width: 13, height: 13)
-                }
-                .buttonStyle(.plain)
-                .help("Quit Yamaha Controller")
+                CloseButton { NSApplication.shared.terminate(nil) }
 
                 Image(nsImage: {
                     if let url = Bundle.main.url(forResource: "yamaha_white", withExtension: "png"),
@@ -67,6 +82,12 @@ struct PopoverView: View {
 
                     SceneButtonsView()
                         .padding()
+
+                    Divider()
+
+                    TransportControlsView()
+                        .padding(.horizontal)
+                        .padding(.vertical, 8)
 
                 }
                 .frame(width: 300)

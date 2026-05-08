@@ -33,7 +33,8 @@ struct AutoOffView: View {
                         Text("Days")
                             .foregroundColor(.secondary)
                         HStack(spacing: 4) {
-                            ForEach(Array(zip(0..<7, ["Su","Mo","Tu","We","Th","Fr","Sa"])), id: \.0) { day, label in
+                            let weekdayOrder: [(Int, String)] = [(1,"Mo"),(2,"Tu"),(3,"We"),(4,"Th"),(5,"Fr"),(6,"Sa"),(0,"Su")]
+                            ForEach(weekdayOrder, id: \.0) { day, label in
                                 let selected = settings.autoOffWeekdays.contains(day)
                                 Button {
                                     var days = settings.autoOffWeekdays

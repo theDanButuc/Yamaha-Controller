@@ -2,6 +2,7 @@ import SwiftUI
 
 struct StatusSectionView: View {
     @ObservedObject private var api = YamahaAPIService.shared
+    @ObservedObject private var settings = YamahaSettings.shared
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -37,7 +38,7 @@ struct StatusSectionView: View {
 
     private var dotColor: Color {
         switch api.powerState {
-        case .on:      return .green
+        case .on:      return settings.schemeColor
         case .standby: return .gray
         case .unknown: return .orange
         }
