@@ -1,5 +1,46 @@
 import SwiftUI
 
+private struct MarqueeText: View {
+    let text: String
+    let font: Font
+    let color: Color
+    let glow: Color
+
+    @State private var xOffset: CGFloat = 0
+
+    var body: some View {
+        GeometryReader { geo in
+            Text(text)
+                .font(font)
+                .foregroundColor(color)
+                .shadow(color: glow, radius: 3)
+                .fixedSize()
+                .offset(x: xOffset)
+                .background(
+                    GeometryReader { textGeo in
+                        Color.clear.onAppear {
+                            let textW = textGeo.size.width
+                            let containerW = geo.size.width
+                            guard textW > containerW else { return }
+                            // Start off-screen to the right, scroll left, exit left with gap, repeat
+                            xOffset = containerW
+                            let gap: CGFloat = 28
+                            let totalDist = containerW + textW + gap
+                            let dur = Double(totalDist) / 42.0
+                            DispatchQueue.main.async {
+                                withAnimation(.linear(duration: dur).repeatForever(autoreverses: false)) {
+                                    xOffset = -(textW + gap)
+                                }
+                            }
+                        }
+                    }
+                )
+        }
+        .clipped()
+        .id(text)
+    }
+}
+
 struct ReceiverDisplayView: View {
     @ObservedObject private var api = YamahaAPIService.shared
     @ObservedObject private var settings = YamahaSettings.shared
@@ -98,18 +139,22 @@ struct ReceiverDisplayView: View {
                     HStack(alignment: .center, spacing: 8) {
                         VStack(alignment: .leading, spacing: 2) {
                             if !api.nowPlayingTrack.isEmpty {
-                                Text(api.nowPlayingTrack)
-                                    .font(.system(size: 12, weight: .semibold, design: .monospaced))
-                                    .foregroundColor(lcdGreen)
-                                    .shadow(color: lcdGlow, radius: 3)
-                                    .lineLimit(2).minimumScaleFactor(0.7)
+                                MarqueeText(
+                                    text: api.nowPlayingTrack,
+                                    font: .system(size: 12, weight: .semibold, design: .monospaced),
+                                    color: lcdGreen,
+                                    glow: lcdGlow
+                                )
+                                .frame(height: 17)
                             }
                             if !api.nowPlayingArtist.isEmpty {
-                                Text(api.nowPlayingArtist)
-                                    .font(.system(size: 12, weight: .semibold, design: .monospaced))
-                                    .foregroundColor(lcdAmber)
-                                    .shadow(color: lcdAmberGlow, radius: 2)
-                                    .lineLimit(1).minimumScaleFactor(0.7)
+                                MarqueeText(
+                                    text: api.nowPlayingArtist,
+                                    font: .system(size: 12, weight: .semibold, design: .monospaced),
+                                    color: lcdAmber,
+                                    glow: lcdAmberGlow
+                                )
+                                .frame(height: 17)
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -130,7 +175,7 @@ struct ReceiverDisplayView: View {
                             .frame(width: 52, height: 52)
                             .clipShape(RoundedRectangle(cornerRadius: 4))
                             .overlay(RoundedRectangle(cornerRadius: 4)
-                                .stroke(lcdDim, lineWidth: 0.5))
+                                .stroke(lcdGreen.opacity(0.75), lineWidth: 1.5))
                         }
                     }
                     .padding(.horizontal, 10)

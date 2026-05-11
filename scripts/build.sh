@@ -17,7 +17,7 @@ DIST_DIR="$PROJECT_DIR/dist"
 APP_NAME="Yamaha Controller"
 EXECUTABLE="YamahaController"
 BUNDLE_ID="com.yamaha-controller"
-VERSION="1.1.0"
+VERSION="1.2.0"
 UNIVERSAL=false
 
 while [[ $# -gt 0 ]]; do
@@ -97,6 +97,14 @@ if [ -f "$ICON_SRC" ]; then
   cp "$ICON_SRC" "$APP_BUNDLE/Contents/Resources/yamaha_white.png"
 else
   echo "⚠  yamaha_white.png not found — skipping icon"
+fi
+
+# ── Copy image assets ─────────────────────────────────────────────────────────
+RESOURCES_SRC="$SOURCE_DIR/Resources"
+if [ -d "$RESOURCES_SRC" ]; then
+  for img in "$RESOURCES_SRC"/*.png; do
+    [ -f "$img" ] && cp "$img" "$APP_BUNDLE/Contents/Resources/" && echo "▸ Copied $(basename "$img")"
+  done
 fi
 
 cat > "$APP_BUNDLE/Contents/Info.plist" <<PLIST

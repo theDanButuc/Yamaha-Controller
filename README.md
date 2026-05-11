@@ -21,32 +21,39 @@ A retro LCD-style panel at the top of the popover shows real-time receiver state
 - **Current input source** — large phosphor-style display
 - **Volume** — in dB when available, raw value as fallback
 - **Sound mode** — DSP/surround program (Straight, Stereo, Surround Decoder, etc.)
-- **Now Playing** — for Spotify and Net Radio inputs, shows the current track title and artist/station name, refreshed every 8 seconds
-- **Album art** — thumbnail displayed for Spotify (always) and Net Radio (when the station provides it); gracefully falls back to text-only layout when unavailable
+- **Now Playing** — for Spotify and Net Radio inputs, shows the current track title and artist/station name, refreshed every 8 seconds; long names scroll continuously in a right-to-left marquee loop
+- **Album art** — thumbnail with accent-colored border displayed for Spotify (always) and Net Radio (when the station provides it); gracefully falls back to text-only layout when unavailable
 - **Mute indicator** — highlighted in red when active
 - **Power dot** — accent-colored when on, dim when in standby
 
 ### Power Control
-An industrial toggle switch controls the receiver power state:
-- Drag or tap to toggle between **On** and **Standby**
-- Animated handle with ONLINE / STANDBY status text
+A compact metallic circular button controls the receiver power state:
+- Tap to toggle between **On** and **Standby**
+- Animated press feedback
 - **Last-source restore**: powers back on to whichever input was active before standby — Spotify, TV, Radio, or anything else
 
 ### Volume Control
-A mixer-style fader controls the receiver volume:
-- **Drag** to set volume — responds immediately on click, updates the receiver in real time while dragging
-- **Scroll wheel** — mouse wheel (1 step per click, direction always correct) and trackpad (smooth, accumulator-based) both work anywhere in the popover while it's open
+A rotating metallic knob controls the receiver volume:
+- **Graduation ring** — 31 tick marks around the knob, lit with the accent color up to the current level; MIN / MAX labels at the endpoints
+- **Drag** to set volume — vertical drag rotates the knob and updates the receiver in real time
+- **Scroll wheel** — mouse wheel (1 step per click) and trackpad (smooth, accumulator-based) both work anywhere in the popover while it's open
 - **Keyboard shortcuts** — active while the popover is open:
   - `Cmd ↑` / `Cmd ↓` — volume up / down (1 unit = 0.5 dB per press)
   - `M` — toggle mute
-- Fader position syncs with the receiver: updates whenever volume changes via keyboard, scroll, or API polling
+- Knob position syncs with the receiver: updates whenever volume changes via keyboard, scroll, or API polling
+
+### Mute
+A dedicated Mute button sits next to the volume knob:
+- Speaker icon toggles between muted and unmuted state
+- Glows with the accent color when active
 
 ### Input Source Buttons
 Four physical keycap-style buttons for quick source switching. Each button is **fully configurable** in Settings — assign any of the 18 supported YXC input sources to any button independently.
 
 - Active source is highlighted with a colored glow and LED indicator
 - Button labels update automatically to reflect your configured sources
-- State syncs with the receiver — changing source via the remote control is reflected in the UI within 30 seconds
+- **Power-on shortcut**: tapping a source button while the receiver is in standby powers it on directly to that source
+- State syncs with the receiver — changing source via the remote control is reflected in the UI within a few seconds
 
 ### Transport Controls
 A compact row of transport and tuner buttons below the source keys, matching the physical remote layout:
@@ -60,7 +67,7 @@ A compact row of transport and tuner buttons below the source keys, matching the
 Context-sensitive: `■` stops playback on streaming sources and cycles the sound program on Tuner; `‖` pauses on streaming and toggles FM/AM on Tuner; `< >` cycle through net presets on Net Radio and switch tuner presets on Tuner.
 
 ### Color Scheme
-Five accent colors to choose from in Settings — changes the LCD display, button LEDs, power switch, and all highlights across the entire UI simultaneously:
+Five accent colors to choose from in Settings — changes the LCD display, button LEDs, power button, volume knob graduation, and all highlights across the entire UI simultaneously:
 
 🔴 Red &nbsp; 🟠 Orange &nbsp; 🟡 Yellow &nbsp; 🟢 Green &nbsp; 🔵 Blue
 
@@ -119,7 +126,7 @@ The app communicates with the receiver using the **Yamaha Extended Control (YXC)
 | `GET /tuner/switchPreset?zone=main&dir=next\|previous` | Cycle tuner presets |
 
 ### Polling
-- Receiver status is polled every **30 seconds**
+- Receiver status is polled every **3 seconds**
 - Now Playing info is refreshed every **8 seconds** when input is Spotify or Net Radio
 - Optimistic UI updates: input and volume changes are applied immediately in the UI and reverted if the API call fails
 
@@ -162,7 +169,7 @@ No external Swift packages. No CocoaPods. No SPM dependencies. Pure Apple framew
 
 ## Installation
 
-1. Download `YamahaController-v1.1.0.dmg` from [Releases](../../releases)
+1. Download `YamahaController-v1.2.0.dmg` from [Releases](../../releases)
 2. Open the DMG and drag **Yamaha Controller** to your Applications folder
 3. Right-click → **Open** on first launch (app is ad-hoc signed, not notarized)
 4. Click the menu bar icon and open **Settings** (gear icon)
@@ -193,9 +200,10 @@ YamahaController/
 ├── YamahaControllerApp.swift       # App entry point (@main)
 ├── Views/
 │   ├── PopoverView.swift           # Root popover layout
-│   ├── ReceiverDisplayView.swift   # LCD-style status display with album art
-│   ├── ManualControlsView.swift    # Power switch + volume fader
-│   ├── VolumeView.swift            # MixerFader component
+│   ├── ReceiverDisplayView.swift   # LCD-style status display with album art + marquee
+│   ├── ManualControlsView.swift    # Power button + volume knob + mute button
+│   ├── VolumeKnobView.swift        # Rotating metallic knob with graduation ring
+│   ├── PowerButtonView.swift       # Circular metallic power button
 │   ├── SceneButtonsView.swift      # Input source keycap buttons
 │   ├── TransportControlsView.swift # Transport / tuner control buttons
 │   ├── KeycapComponents.swift      # Shared keycap shape and press style
@@ -210,6 +218,10 @@ YamahaController/
 │   ├── YamahaAPIService.swift      # All YXC HTTP calls + polling
 │   ├── SchedulerService.swift      # launchd plist management
 │   └── DiscoveryService.swift      # Bonjour/mDNS receiver discovery
+├── Resources/
+│   ├── Volume.png                  # Metallic knob asset
+│   ├── PowerButton.png             # Metallic power button asset
+│   └── Button.png                  # Generic button asset (source keys, mute)
 └── scripts/
     ├── build.sh                    # Compile + bundle + DMG
     └── make_dmg.sh                 # DMG creation helper

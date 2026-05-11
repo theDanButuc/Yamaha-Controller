@@ -155,6 +155,44 @@ struct IndustrialPowerSwitch: View {
     }
 }
 
+private struct MuteButton: View {
+    let isMuted: Bool
+    let onTap: () -> Void
+
+    @ObservedObject private var settings = YamahaSettings.shared
+    @State private var isPressed = false
+
+    private let size: CGFloat = 40
+
+    private var buttonImage: NSImage {
+        if let url = Bundle.main.url(forResource: "Button", withExtension: "png"),
+           let img = NSImage(contentsOf: url) { return img }
+        return NSImage()
+    }
+
+    var body: some View {
+        ZStack {
+            Image(nsImage: buttonImage)
+                .resizable()
+                .frame(width: size, height: size)
+
+            Image(systemName: isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(isMuted ? settings.schemeColor : Color(white: 0.55))
+                .shadow(color: isMuted ? settings.schemeMid.opacity(0.9) : .clear, radius: 5)
+                .animation(.easeInOut(duration: 0.15), value: isMuted)
+        }
+        .frame(width: size, height: size)
+        .scaleEffect(isPressed ? 0.91 : 1.0)
+        .animation(.spring(response: 0.16, dampingFraction: 0.52), value: isPressed)
+        .onTapGesture {
+            isPressed = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { isPressed = false }
+            onTap()
+        }
+    }
+}
+
 struct ManualControlsView: View {
     @ObservedObject private var api = YamahaAPIService.shared
     @ObservedObject private var settings = YamahaSettings.shared
@@ -164,54 +202,61 @@ struct ManualControlsView: View {
     private var isOn: Bool { api.powerState == .on }
 
     var body: some View {
-        VStack(spacing: 6) {
-            HStack(alignment: .top, spacing: 28) {
-                VStack(spacing: 6) {
-                    IndustrialPowerSwitch(
-                        isOn: isOn,
-                        isDisabled: api.powerState == .unknown,
-                        isBusy: isBusy,
-                        onTap: togglePower
-                    )
+        VStack(spacing: 0) {
+            ZStack {
+                // Volume knob — centered
+                VolumeKnobView(
+                    volume: api.volume,
+                    maxVolume: api.maxVolume > 0 ? api.maxVolume : 100,
+                    isDisabled: api.powerState != .on,
+                    onCommit: { newVol in api.setVolume(newVol) { _ in } }
+                )
 
-                    if isOn && !api.currentInput.isEmpty {
-                        HStack(spacing: 4) {
-                            Circle()
-                                .fill(YamahaSettings.shared.schemeMid)
-                                .frame(width: 5, height: 5)
-                            Text(YamahaAPIService.formatInput(api.currentInput))
-                                .font(.system(size: 11, weight: .medium, design: .monospaced))
-                                .foregroundColor(Color(white: 0.55))
-                                .tracking(0.5)
-                        }
-                        .transition(.opacity)
-                        .animation(.easeInOut(duration: 0.3), value: api.currentInput)
+                // Power button — top-left
+                VStack {
+                    HStack {
+                        PowerButtonView(
+                            isOn: isOn,
+                            isDisabled: api.powerState == .unknown,
+                            isBusy: isBusy,
+                            onTap: togglePower
+                        )
+                        Spacer()
                     }
-
-                    if let feedback {
-                        Text(feedback)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
+                    Spacer()
                 }
 
-                VStack(spacing: 6) {
-                    MixerFader(
-                        volume: api.volume,
-                        maxVolume: api.maxVolume > 0 ? api.maxVolume : 100,
-                        isDisabled: api.powerState != .on,
-                        onCommit: { newVol in api.setVolume(newVol) { _ in } },
-                        trackH: 120
-                    )
+                // Mute button — bottom-right, slightly lower than before
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        MuteButton(isMuted: api.isMuted, onTap: { api.toggleMute() })
+                            .padding(.trailing, 4)
+                    }
+                    .padding(.bottom, 2)
+                }
 
+                // VOLUME label — centered, small gap below knob
+                VStack {
+                    Spacer()
                     Text("VOLUME")
-                        .font(.system(size: 11, weight: .medium, design: .monospaced))
-                        .foregroundColor(Color(white: 0.55))
-                        .tracking(0.5)
+                        .font(.system(size: 10, weight: .medium, design: .monospaced))
+                        .foregroundColor(Color(white: 0.50))
+                        .tracking(1.5)
+                        .padding(.bottom, 10)
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .center)
+            .frame(maxWidth: .infinity)
+            .frame(height: 200)
+
+            if let feedback {
+                Text(feedback)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
         }
+        .frame(maxWidth: .infinity)
     }
 
     private func togglePower() {

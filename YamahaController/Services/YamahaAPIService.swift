@@ -44,7 +44,7 @@ class YamahaAPIService: ObservableObject {
 
     func startPolling() {
         fetchStatus()
-        pollingTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+        pollingTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { [weak self] _ in
             self?.fetchStatus()
         }
         playInfoTimer = Timer.scheduledTimer(withTimeInterval: 8, repeats: true) { [weak self] _ in
@@ -311,6 +311,13 @@ class YamahaAPIService: ObservableObject {
         ("HDMI 6",        "hdmi6"),
         ("Net Radio",     "net_radio"),
         ("Spotify",       "spotify"),
+        ("SiriusXM",      "sirius_xm"),
+        ("Pandora",       "pandora"),
+        ("Qobuz",         "qobuz"),
+        ("TIDAL",         "tidal"),
+        ("Deezer",        "deezer"),
+        ("Amazon Music",  "amazon_music"),
+        ("Roon",          "roon"),
         ("Bluetooth",     "bluetooth"),
         ("AirPlay",       "airplay"),
         ("FM Tuner",      "tuner"),
@@ -332,9 +339,16 @@ class YamahaAPIService: ObservableObject {
         case "hdmi4":     return "HDMI4"
         case "hdmi5":     return "HDMI5"
         case "hdmi6":     return "HDMI6"
-        case "net_radio": return "RADIO"
-        case "spotify":   return "SPOTIFY"
-        case "bluetooth": return "BT"
+        case "net_radio":     return "RADIO"
+        case "spotify":       return "SPOTIFY"
+        case "sirius_xm":     return "SIRIUS"
+        case "pandora":       return "PANDORA"
+        case "qobuz":         return "QOBUZ"
+        case "tidal":         return "TIDAL"
+        case "deezer":        return "DEEZER"
+        case "amazon_music":  return "AMAZON"
+        case "roon":          return "ROON"
+        case "bluetooth":     return "BT"
         case "airplay":   return "APLAY"
         case "tuner":     return "TUNER"
         case "server":    return "SERVER"
@@ -366,14 +380,21 @@ class YamahaAPIService: ObservableObject {
         case "optical2":   return "Optical 2"
         case "coaxial1":   return "Coaxial 1"
         case "coaxial2":   return "Coaxial 2"
-        case "net_radio":  return "Net Radio"
-        case "tuner":      return "Tuner"
-        case "bluetooth":  return "Bluetooth"
-        case "airplay":    return "AirPlay"
-        case "spotify":    return "Spotify"
-        case "server":     return "Server"
-        case "usb":        return "USB"
-        case "tv":         return "TV"
+        case "net_radio":    return "Net Radio"
+        case "tuner":        return "Tuner"
+        case "bluetooth":    return "Bluetooth"
+        case "airplay":      return "AirPlay"
+        case "spotify":      return "Spotify"
+        case "sirius_xm":    return "SiriusXM"
+        case "pandora":      return "Pandora"
+        case "qobuz":        return "Qobuz"
+        case "tidal":        return "TIDAL"
+        case "deezer":       return "Deezer"
+        case "amazon_music": return "Amazon Music"
+        case "roon":         return "Roon"
+        case "server":       return "Server"
+        case "usb":          return "USB"
+        case "tv":           return "TV"
         case "multi_ch":   return "Multi Ch"
         default:
             return raw.replacingOccurrences(of: "_", with: " ").capitalized
@@ -430,6 +451,15 @@ class YamahaAPIService: ObservableObject {
     }
 
     // MARK: - Sequence
+
+    func powerOnWithInput(_ input: String, completion: @escaping (Error?) -> Void) {
+        setPower("on") { error in
+            if let error { completion(error); return }
+            DispatchQueue.global().asyncAfter(deadline: .now() + 3) {
+                self.setInput(input, completion: completion)
+            }
+        }
+    }
 
     func powerOnSequence(completion: @escaping (Error?) -> Void) {
         let lastInput = UserDefaults.standard.string(forKey: "last_input") ?? ""
