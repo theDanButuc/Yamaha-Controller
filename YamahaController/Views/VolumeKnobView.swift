@@ -22,6 +22,7 @@ struct VolumeKnobView: View {
 
     @State private var isDragging = false
     @State private var dragStartFraction: Double = 0
+    @State private var dragStartAngle: Double = 0
     @State private var scrollAccumulator: CGFloat = 0
     @State private var scrollMonitor: Any? = nil
     @State private var volRef = VolumeRef(0)
@@ -163,24 +164,41 @@ struct VolumeKnobView: View {
         }
     }
 
+    private func angleFromPoint(_ point: CGPoint) -> Double {
+        let center = CGPoint(x: totalSize / 2, y: totalSize / 2)
+        let dx = point.x - center.x
+        let dy = point.y - center.y
+        return atan2(dx, -dy) * 180.0 / .pi
+    }
+
+    private func normalizedDelta(_ delta: Double) -> Double {
+        var d = delta
+        while d > 180 { d -= 360 }
+        while d < -180 { d += 360 }
+        return d
+    }
+
     private var dragGesture: some Gesture {
-        DragGesture(minimumDistance: 0)
+        DragGesture(minimumDistance: 0, coordinateSpace: .local)
             .onChanged { val in
                 guard !isDisabled else { return }
                 if !isDragging {
                     isDragging = true
                     dragStartFraction = fraction
+                    dragStartAngle = angleFromPoint(val.startLocation)
                 }
-                let delta = -val.translation.height / 160.0
-                let newFrac = max(0, min(1, dragStartFraction + delta))
+                let currentAngle = angleFromPoint(val.location)
+                let delta = normalizedDelta(currentAngle - dragStartAngle)
+                let newFrac = max(0, min(1, dragStartFraction + delta / 270.0))
                 let newVol = Int((newFrac * Double(maxVolume)).rounded())
                 if newVol != volume { onCommit(newVol) }
             }
             .onEnded { val in
                 guard !isDisabled else { return }
                 isDragging = false
-                let delta = -val.translation.height / 160.0
-                let newFrac = max(0, min(1, dragStartFraction + delta))
+                let currentAngle = angleFromPoint(val.location)
+                let delta = normalizedDelta(currentAngle - dragStartAngle)
+                let newFrac = max(0, min(1, dragStartFraction + delta / 270.0))
                 let newVol = Int((newFrac * Double(maxVolume)).rounded())
                 onCommit(newVol)
             }

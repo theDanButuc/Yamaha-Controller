@@ -105,6 +105,9 @@ if [ -d "$RESOURCES_SRC" ]; then
   for img in "$RESOURCES_SRC"/*.png; do
     [ -f "$img" ] && cp "$img" "$APP_BUNDLE/Contents/Resources/" && echo "▸ Copied $(basename "$img")"
   done
+  for font in "$RESOURCES_SRC"/*.ttf "$RESOURCES_SRC"/*.otf; do
+    [ -f "$font" ] && cp "$font" "$APP_BUNDLE/Contents/Resources/" && echo "▸ Copied $(basename "$font")"
+  done
 fi
 
 cat > "$APP_BUNDLE/Contents/Info.plist" <<PLIST
@@ -126,6 +129,8 @@ cat > "$APP_BUNDLE/Contents/Info.plist" <<PLIST
     <string>${VERSION}</string>
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
+    <key>ATSApplicationFontsPath</key>
+    <string>.</string>
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>LSUIElement</key>

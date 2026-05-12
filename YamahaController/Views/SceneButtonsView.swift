@@ -30,7 +30,7 @@ private struct KeycapButton: View {
                         Text(label)
                             .font(.system(size: label.count > 5 ? 7 : 9,
                                           weight: .bold, design: .monospaced))
-                            .foregroundColor(isActive ? settings.schemeColor : Color(white: 0.65))
+                            .foregroundColor(isActive ? settings.schemeColor : Color.white)
                             .shadow(color: isActive ? settings.schemeMid.opacity(0.8) : .clear, radius: 4)
                             .tracking(0.5)
                             .animation(.easeInOut(duration: 0.15), value: isActive)

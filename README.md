@@ -17,10 +17,11 @@ A native macOS menu bar application for controlling **Yamaha AV receivers** over
 ## Features
 
 ### Receiver Display
-A retro LCD-style panel at the top of the popover shows real-time receiver state:
+A retro LCD-style panel at the top of the popover shows real-time receiver state, rendered in **Bitcount Prop Single ExtraLight** — a bitmap display font that matches the aesthetic of real audio equipment:
 - **Current input source** — large phosphor-style display
 - **Volume** — in dB when available, raw value as fallback
 - **Sound mode** — DSP/surround program (Straight, Stereo, Surround Decoder, etc.)
+- **Shuffle / Repeat indicators** — appear between the volume and mode readouts when active; `⇄` for shuffle, `↻` for repeat all, `↻1` for repeat one
 - **Now Playing** — for Spotify and Net Radio inputs, shows the current track title and artist/station name, refreshed every 8 seconds; long names scroll continuously in a right-to-left marquee loop
 - **Album art** — thumbnail with accent-colored border displayed for Spotify (always) and Net Radio (when the station provides it); gracefully falls back to text-only layout when unavailable
 - **Mute indicator** — highlighted in red when active
@@ -29,13 +30,14 @@ A retro LCD-style panel at the top of the popover shows real-time receiver state
 ### Power Control
 A compact metallic circular button controls the receiver power state:
 - Tap to toggle between **On** and **Standby**
+- White power icon; glows with the accent color when the receiver is on
 - Animated press feedback
 - **Last-source restore**: powers back on to whichever input was active before standby — Spotify, TV, Radio, or anything else
 
 ### Volume Control
 A rotating metallic knob controls the receiver volume:
 - **Graduation ring** — 31 tick marks around the knob, lit with the accent color up to the current level; MIN / MAX labels at the endpoints
-- **Drag** to set volume — vertical drag rotates the knob and updates the receiver in real time
+- **Drag** to set volume — drag in a circular arc around the knob (clockwise = up, counterclockwise = down); the knob rotates to follow your gesture in real time
 - **Scroll wheel** — mouse wheel (1 step per click) and trackpad (smooth, accumulator-based) both work anywhere in the popover while it's open
 - **Keyboard shortcuts** — active while the popover is open:
   - `Cmd ↑` / `Cmd ↓` — volume up / down (1 unit = 0.5 dB per press)
@@ -44,25 +46,31 @@ A rotating metallic knob controls the receiver volume:
 
 ### Mute
 A dedicated Mute button sits next to the volume knob:
-- Speaker icon toggles between muted and unmuted state
-- Glows with the accent color when active
+- White speaker icon; glows with the accent color when muted
+- Toggles mute state on the receiver
 
 ### Input Source Buttons
 Four physical keycap-style buttons for quick source switching. Each button is **fully configurable** in Settings — assign any of the 18 supported YXC input sources to any button independently.
 
-- Active source is highlighted with a colored glow and LED indicator
-- Button labels update automatically to reflect your configured sources
+- White label when inactive; accent-colored with a glow when the source is active
+- LED indicator dot below each button
 - **Power-on shortcut**: tapping a source button while the receiver is in standby powers it on directly to that source
 - State syncs with the receiver — changing source via the remote control is reflected in the UI within a few seconds
 
 ### Transport Controls
-A compact row of transport and tuner buttons below the source keys, matching the physical remote layout:
+A compact set of transport buttons below the source keys:
 
 | Row | Buttons | Action |
 |-----|---------|--------|
-| 1 | `⏮` `▶` `⏭` | Previous / Play / Next (Spotify, Net Radio) |
+| 1 | `⇄` `⏮` `▶` `⏭` `↻` | Shuffle toggle / Previous / Play / Next / Repeat cycle |
 | 2 | `<<` `■` `‖` `>>` | Tune − / Sound mode cycle / Band toggle (FM↔AM) / Tune + |
 | 3 | `<` `>` | Preset − / Preset + |
+
+- **Shuffle** (`⇄`) — toggles shuffle on/off; lit with the accent color when active; disabled for Tuner input
+- **Repeat** (`↻`) — cycles through off → all → one → off; icon changes to `↻1` for repeat-one; lit when active; disabled for Tuner input
+- **Play** (`▶`) — lit when the receiver is actively playing
+- **Pause** (`‖`) — lit when paused
+- **Stop** (`■`) — lit when stopped (streaming sources only); cycles the sound program on Tuner
 
 Context-sensitive: `■` stops playback on streaming sources and cycles the sound program on Tuner; `‖` pauses on streaming and toggles FM/AM on Tuner; `< >` cycle through net presets on Net Radio and switch tuner presets on Tuner.
 
@@ -118,8 +126,10 @@ The app communicates with the receiver using the **Yamaha Extended Control (YXC)
 | `GET /main/getSoundProgramList` | Fetch available DSP modes |
 | `GET /main/setSoundProgram?program={p}` | Set DSP/surround mode |
 | `GET /netusb/recallPreset?zone=main&num={n}` | Recall Net Radio preset |
-| `GET /netusb/getPlayInfo` | Now playing track / artist / station / album art |
+| `GET /netusb/getPlayInfo` | Now playing, playback state, shuffle/repeat, album art |
 | `GET /netusb/setPlayback?playback={action}` | Play / pause / stop / previous / next |
+| `GET /netusb/toggleShuffle` | Toggle shuffle on/off |
+| `GET /netusb/toggleRepeat` | Cycle repeat mode (off → all → one) |
 | `GET /tuner/getPlayInfo` | Tuner band and frequency |
 | `GET /tuner/setBand?band=fm\|am` | Switch tuner band |
 | `GET /tuner/setFreq?band={b}&tuning=up\|down` | Step tuner frequency |
@@ -127,7 +137,7 @@ The app communicates with the receiver using the **Yamaha Extended Control (YXC)
 
 ### Polling
 - Receiver status is polled every **3 seconds**
-- Now Playing info is refreshed every **8 seconds** when input is Spotify or Net Radio
+- Now Playing info (track, artist, playback state, shuffle, repeat) is refreshed every **8 seconds** when input is Spotify or Net Radio
 - Optimistic UI updates: input and volume changes are applied immediately in the UI and reverted if the API call fails
 
 ### Scheduling (launchd)
@@ -152,6 +162,7 @@ When a schedule is enabled or its settings change, the app removes the old plist
 | Scheduling | launchd via `launchctl` + shell scripts |
 | Persistence | UserDefaults |
 | Notifications | UserNotifications framework |
+| Fonts | Bitcount Prop Single ExtraLight (OFL) |
 | Build | `swiftc` via custom `scripts/build.sh` |
 | Distribution | DMG (ad-hoc signed) |
 
@@ -199,13 +210,13 @@ YamahaController/
 ├── AppDelegate.swift               # NSStatusItem, NSPopover, menu bar icon, key monitor
 ├── YamahaControllerApp.swift       # App entry point (@main)
 ├── Views/
-│   ├── PopoverView.swift           # Root popover layout
-│   ├── ReceiverDisplayView.swift   # LCD-style status display with album art + marquee
+│   ├── PopoverView.swift           # Root popover layout with centered header
+│   ├── ReceiverDisplayView.swift   # LCD-style display with Bitcount font, album art, marquee
 │   ├── ManualControlsView.swift    # Power button + volume knob + mute button
-│   ├── VolumeKnobView.swift        # Rotating metallic knob with graduation ring
-│   ├── PowerButtonView.swift       # Circular metallic power button
+│   ├── VolumeKnobView.swift        # Rotating metallic knob with rotational drag gesture
+│   ├── PowerButtonView.swift       # Circular metallic power button with power icon
 │   ├── SceneButtonsView.swift      # Input source keycap buttons
-│   ├── TransportControlsView.swift # Transport / tuner control buttons
+│   ├── TransportControlsView.swift # Transport buttons incl. shuffle and repeat
 │   ├── KeycapComponents.swift      # Shared keycap shape and press style
 │   ├── SettingsView.swift          # IP + color scheme + source button config + schedules
 │   ├── MorningAlarmView.swift      # Morning alarm controls
@@ -220,8 +231,9 @@ YamahaController/
 │   └── DiscoveryService.swift      # Bonjour/mDNS receiver discovery
 ├── Resources/
 │   ├── Volume.png                  # Metallic knob asset
-│   ├── PowerButton.png             # Metallic power button asset
-│   └── Button.png                  # Generic button asset (source keys, mute)
+│   ├── PowerButton.png             # (unused, kept for reference)
+│   ├── Button.png                  # Circular button asset (power, source keys, mute)
+│   └── BitcountPropSingle-ExtraLight.ttf  # Display font (OFL)
 └── scripts/
     ├── build.sh                    # Compile + bundle + DMG
     └── make_dmg.sh                 # DMG creation helper

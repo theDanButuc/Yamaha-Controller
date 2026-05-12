@@ -29,35 +29,40 @@ struct PopoverView: View {
     var body: some View {
         VStack(spacing: 0) {
             // ── Header ────────────────────────────────────────────────
-            HStack(spacing: 8) {
-                CloseButton { NSApplication.shared.terminate(nil) }
+            ZStack {
+                // Centered logo + title
+                HStack(spacing: 6) {
+                    Image(nsImage: {
+                        if let url = Bundle.main.url(forResource: "yamaha_white", withExtension: "png"),
+                           let img = NSImage(contentsOf: url) { return img }
+                        return NSImage()
+                    }())
+                    .resizable()
+                    .interpolation(.high)
+                    .frame(width: 18, height: 18)
 
-                Image(nsImage: {
-                    if let url = Bundle.main.url(forResource: "yamaha_white", withExtension: "png"),
-                       let img = NSImage(contentsOf: url) { return img }
-                    return NSImage()
-                }())
-                .resizable()
-                .interpolation(.high)
-                .frame(width: 18, height: 18)
-
-                Text("Yamaha Controller")
-                    .font(.headline)
-                Spacer()
-                Button {
-                    withAnimation(.easeInOut(duration: 0.15)) {
-                        showingSettings.toggle()
-                    }
-                } label: {
-                    Image(systemName: showingSettings ? "xmark.circle.fill" : "gear")
-                        .font(.system(size: 16))
-                        .foregroundColor(showingSettings ? .secondary : .primary)
+                    Text("Yamaha Controller")
+                        .font(.headline)
                 }
-                .buttonStyle(.plain)
-                .help(showingSettings ? "Close Settings" : "Settings")
+
+                // Left: close, Right: gear
+                HStack {
+                    CloseButton { NSApplication.shared.terminate(nil) }
+                    Spacer()
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            showingSettings.toggle()
+                        }
+                    } label: {
+                        Image(systemName: showingSettings ? "xmark.circle.fill" : "gear")
+                            .font(.system(size: 16))
+                            .foregroundColor(showingSettings ? .secondary : .primary)
+                    }
+                    .buttonStyle(.plain)
+                    .help(showingSettings ? "Close Settings" : "Settings")
+                }
             }
             .padding(.horizontal)
-            .padding(.vertical, 10)
             .frame(height: 44)
 
             Divider()

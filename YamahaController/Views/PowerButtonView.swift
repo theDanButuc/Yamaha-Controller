@@ -7,12 +7,13 @@ struct PowerButtonView: View {
     let isBusy: Bool
     let onTap: () -> Void
 
+    @ObservedObject private var settings = YamahaSettings.shared
     @State private var isPressed = false
 
     private let size: CGFloat = 40
 
     private var buttonImage: NSImage {
-        if let url = Bundle.main.url(forResource: "PowerButton", withExtension: "png"),
+        if let url = Bundle.main.url(forResource: "Button", withExtension: "png"),
            let img = NSImage(contentsOf: url) { return img }
         return NSImage()
     }
@@ -25,12 +26,17 @@ struct PowerButtonView: View {
 
             if isBusy {
                 ProgressView().scaleEffect(0.62)
+            } else {
+                Image(systemName: "power")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.white)
+                    .shadow(color: isOn ? settings.schemeMid.opacity(0.9) : .clear, radius: 5)
+                    .animation(.easeInOut(duration: 0.15), value: isOn)
             }
         }
         .frame(width: size, height: size)
         .scaleEffect(isPressed ? 0.91 : 1.0)
         .animation(.spring(response: 0.16, dampingFraction: 0.52), value: isPressed)
-        .opacity(1.0)
         .onTapGesture {
             guard !isDisabled && !isBusy else { return }
             isPressed = true

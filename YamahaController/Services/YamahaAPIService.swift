@@ -29,6 +29,13 @@ class YamahaAPIService: ObservableObject {
     @Published var activeScene: Int? = {
         UserDefaults.standard.object(forKey: "active_scene") as? Int
     }()
+    @Published var playbackStatus: String = ""
+    @Published var shuffleMode: String = "off"
+    @Published var repeatMode: String = "off"
+    @Published var shuffleAvailable: Bool = false
+    @Published var repeatAvailable: [String] = []
+
+    private var shuffleRepeatFrozenUntil: Date? = nil
 
     private var pollingTimer: Timer?
     private var playInfoTimer: Timer?
@@ -123,6 +130,9 @@ class YamahaAPIService: ObservableObject {
                     self.nowPlayingTrack = ""
                     self.nowPlayingArtist = ""
                     self.albumArtURLString = ""
+                    self.playbackStatus = ""
+                    self.shuffleMode = "off"
+                    self.repeatMode = "off"
                 } else {
                     self.fetchPlayInfoIfNeeded()
                     self.fetchTunerInfoIfNeeded()
@@ -263,6 +273,48 @@ class YamahaAPIService: ObservableObject {
     func switchTunerPreset(_ dir: String) {
         guard let url = URL(string: "\(baseURL)/tuner/switchPreset?zone=main&dir=\(dir)") else { return }
         URLSession.shared.dataTask(with: url) { _, _, _ in }.resume()
+    }
+
+    func toggleShuffle() {
+        guard let url = URL(string: "\(baseURL)/netusb/toggleShuffle") else { return }
+        shuffleRepeatFrozenUntil = Date().addingTimeInterval(4)
+        URLSession.shared.dataTask(with: url) { [weak self] data, _, error in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                if error != nil { self.shuffleRepeatFrozenUntil = nil; return }
+                if let data,
+                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let code = json["response_code"] as? Int, code == 0 {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        self.shuffleRepeatFrozenUntil = nil
+                        self.fetchPlayInfoIfNeeded()
+                    }
+                } else {
+                    self.shuffleRepeatFrozenUntil = nil
+                }
+            }
+        }.resume()
+    }
+
+    func cycleRepeat() {
+        guard let url = URL(string: "\(baseURL)/netusb/toggleRepeat") else { return }
+        shuffleRepeatFrozenUntil = Date().addingTimeInterval(4)
+        URLSession.shared.dataTask(with: url) { [weak self] data, _, error in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                if error != nil { self.shuffleRepeatFrozenUntil = nil; return }
+                if let data,
+                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let code = json["response_code"] as? Int, code == 0 {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        self.shuffleRepeatFrozenUntil = nil
+                        self.fetchPlayInfoIfNeeded()
+                    }
+                } else {
+                    self.shuffleRepeatFrozenUntil = nil
+                }
+            }
+        }.resume()
     }
 
     func nextNetPreset() {
@@ -424,6 +476,15 @@ class YamahaAPIService: ObservableObject {
                 let artist = json["artist"] as? String ?? ""
                 self.nowPlayingTrack  = track
                 self.nowPlayingArtist = artist
+
+                if let pb = json["playback"] as? String { self.playbackStatus = pb }
+                self.shuffleAvailable = (json["shuffle_available"] as? [String])?.isEmpty == false
+                self.repeatAvailable  = json["repeat_available"]  as? [String] ?? []
+                let frozen = self.shuffleRepeatFrozenUntil.map { Date() < $0 } ?? false
+                if !frozen {
+                    if let sh = json["shuffle"] as? String { self.shuffleMode = sh }
+                    if let rp = json["repeat"]  as? String { self.repeatMode = rp }
+                }
 
                 if let artPath = json["albumart_url"] as? String,
                    let artId   = json["albumart_id"]  as? Int,

@@ -121,7 +121,7 @@ struct ReceiverDisplayView: View {
 
                 // ── Row 2: Input name (big) ──────────────────────────────
                 Text(inputLabel)
-                    .font(.system(size: 18, weight: .bold, design: .monospaced))
+                    .font(.custom("BitcountPropSingle-ExtraLight", size: 22))
                     .foregroundColor(isOn ? lcdGreen : lcdDim)
                     .shadow(color: isOn ? lcdGlow : .clear, radius: 4)
                     .tracking(2).lineLimit(1).minimumScaleFactor(0.6)
@@ -141,20 +141,20 @@ struct ReceiverDisplayView: View {
                             if !api.nowPlayingTrack.isEmpty {
                                 MarqueeText(
                                     text: api.nowPlayingTrack,
-                                    font: .system(size: 12, weight: .semibold, design: .monospaced),
+                                    font: .custom("BitcountPropSingle-ExtraLight", size: 14),
                                     color: lcdGreen,
                                     glow: lcdGlow
                                 )
-                                .frame(height: 17)
+                                .frame(height: 18)
                             }
                             if !api.nowPlayingArtist.isEmpty {
                                 MarqueeText(
                                     text: api.nowPlayingArtist,
-                                    font: .system(size: 12, weight: .semibold, design: .monospaced),
+                                    font: .custom("BitcountPropSingle-ExtraLight", size: 14),
                                     color: lcdAmber,
                                     glow: lcdAmberGlow
                                 )
-                                .frame(height: 17)
+                                .frame(height: 18)
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -186,32 +186,58 @@ struct ReceiverDisplayView: View {
                     .padding(.horizontal, 8)
                     .padding(.vertical, hasNowPlaying ? 4 : 6)
 
-                // ── Row 4: Volume + Mode ─────────────────────────────────
+                // ── Row 4: Volume + [shuffle/repeat] + Mode ─────────────
                 HStack(alignment: .bottom) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("VOLUME")
                             .font(.system(size: 7, weight: .medium, design: .monospaced))
                             .foregroundColor(lcdDim).tracking(1.5)
                         Text(volumeLabel)
-                            .font(.system(size: 13, weight: .bold, design: .monospaced))
+                            .font(.custom("BitcountPropSingle-ExtraLight", size: 16))
                             .foregroundColor(isOn
                                 ? (api.isMuted ? Color(red: 1.0, green: 0.35, blue: 0.2) : lcdGreen)
                                 : lcdDim)
                             .shadow(color: isOn && !api.isMuted ? lcdGlow : .clear, radius: 3)
                             .tracking(1)
                     }
+
                     Spacer()
+
+                    // Shuffle + Repeat indicators — visible only when active
+                    if isOn && (api.shuffleMode != "off" || api.repeatMode != "off") {
+                        HStack(spacing: 5) {
+                            if api.shuffleMode != "off" {
+                                Image(systemName: "shuffle")
+                                    .font(.system(size: 13, weight: .light))
+                                    .foregroundColor(lcdGreen)
+                                    .shadow(color: lcdGlow, radius: 4)
+                            }
+                            if api.repeatMode != "off" {
+                                Image(systemName: api.repeatMode == "one" ? "repeat.1" : "repeat")
+                                    .font(.system(size: 13, weight: .light))
+                                    .foregroundColor(lcdGreen)
+                                    .shadow(color: lcdGlow, radius: 4)
+                            }
+                        }
+                        .padding(.bottom, 2)
+                        .transition(.opacity.combined(with: .scale(scale: 0.8)))
+                    }
+
+                    Spacer()
+
                     VStack(alignment: .trailing, spacing: 2) {
                         Text("MODE")
                             .font(.system(size: 7, weight: .medium, design: .monospaced))
                             .foregroundColor(lcdDim).tracking(1.5)
                         Text(soundLabel)
-                            .font(.system(size: 9, weight: .medium, design: .monospaced))
+                            .font(.custom("BitcountPropSingle-ExtraLight", size: 11))
                             .foregroundColor(isOn ? lcdAmber : lcdDim)
                             .shadow(color: isOn ? lcdAmberGlow : .clear, radius: 3)
                             .tracking(0.8).lineLimit(1).minimumScaleFactor(0.7)
                     }
                 }
+                .animation(.easeInOut(duration: 0.2), value: api.shuffleMode)
+                .animation(.easeInOut(duration: 0.2), value: api.repeatMode)
                 .padding(.horizontal, 10)
                 .padding(.bottom, 8)
             }

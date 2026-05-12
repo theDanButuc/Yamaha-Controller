@@ -178,7 +178,7 @@ private struct MuteButton: View {
 
             Image(systemName: isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(isMuted ? settings.schemeColor : Color(white: 0.55))
+                .foregroundColor(isMuted ? settings.schemeColor : Color.white)
                 .shadow(color: isMuted ? settings.schemeMid.opacity(0.9) : .clear, radius: 5)
                 .animation(.easeInOut(duration: 0.15), value: isMuted)
         }
