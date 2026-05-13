@@ -34,6 +34,26 @@ class YamahaAPIService: ObservableObject {
     @Published var repeatMode: String = "off"
     @Published var shuffleAvailable: Bool = false
     @Published var repeatAvailable: [String] = []
+    @Published var audioFormat: String = ""
+    @Published var audioChannels: String = ""
+    @Published var deviceModel: String = ""
+    @Published var deviceFirmware: String = ""
+
+    // Music Center
+    @Published var recentItems: [NetRadioRecentItem] = []
+    @Published var presetItems: [NetRadioPreset] = []
+    @Published var availableInputs: [String] = []
+
+    // Audio settings
+    @Published var pureDirectMode: Bool = false
+    @Published var enhancerMode: Bool = false
+    @Published var extraBassMode: Bool = false
+    @Published var adaptiveDRC: Bool = false
+    @Published var toneControlBass: Int = 0
+    @Published var toneControlTreble: Int = 0
+    @Published var subwooferVolume: Int = 0
+    @Published var dialogueLevel: Int = 0
+    @Published var surroundDecoderType: String = ""
 
     private var shuffleRepeatFrozenUntil: Date? = nil
 
@@ -57,6 +77,7 @@ class YamahaAPIService: ObservableObject {
         playInfoTimer = Timer.scheduledTimer(withTimeInterval: 8, repeats: true) { [weak self] _ in
             self?.fetchPlayInfoIfNeeded()
         }
+        fetchDeviceInfo()
     }
 
     func stopPolling() {
@@ -123,6 +144,19 @@ class YamahaAPIService: ObservableObject {
 
                 // Sound program (DSP mode)
                 if let sp = json["sound_program"] as? String { self.soundProgram = sp }
+                if let sdt = json["surr_decoder_type"] as? String { self.surroundDecoderType = sdt }
+
+                // Audio controls
+                if let pd  = json["pure_direct"]   as? Bool { self.pureDirectMode = pd }
+                if let enh = json["enhancer"]       as? Bool { self.enhancerMode   = enh }
+                if let eb  = json["extra_bass"]     as? Bool { self.extraBassMode  = eb }
+                if let adr = json["adaptive_drc"]   as? Bool { self.adaptiveDRC    = adr }
+                if let dl  = json["dialogue_level"] as? Int  { self.dialogueLevel  = dl }
+                if let sv  = json["subwoofer_volume"] as? Int { self.subwooferVolume = sv }
+                if let tc  = json["tone_control"]   as? [String: Any] {
+                    if let b = tc["bass"]   as? Int { self.toneControlBass   = b }
+                    if let t = tc["treble"] as? Int { self.toneControlTreble = t }
+                }
 
                 // Active scene — clear on standby, keep persisted value on "on"
                 if newState == .standby {
@@ -133,9 +167,12 @@ class YamahaAPIService: ObservableObject {
                     self.playbackStatus = ""
                     self.shuffleMode = "off"
                     self.repeatMode = "off"
+                    self.audioFormat = ""
+                    self.audioChannels = ""
                 } else {
                     self.fetchPlayInfoIfNeeded()
                     self.fetchTunerInfoIfNeeded()
+                    self.fetchSignalInfo()
                 }
             }
         }.resume()
@@ -341,6 +378,151 @@ class YamahaAPIService: ObservableObject {
         }.resume()
     }
 
+    // MARK: - Audio settings
+
+    func setPureDirect(_ enabled: Bool) {
+        guard let url = URL(string: "\(baseURL)/main/setPureDirect?enable=\(enabled)") else { return }
+        URLSession.shared.dataTask(with: url) { [weak self] _, _, error in
+            if error == nil { DispatchQueue.main.async { self?.pureDirectMode = enabled } }
+        }.resume()
+    }
+
+    func setEnhancer(_ enabled: Bool) {
+        guard let url = URL(string: "\(baseURL)/main/setEnhancer?enable=\(enabled)") else { return }
+        URLSession.shared.dataTask(with: url) { [weak self] _, _, error in
+            if error == nil { DispatchQueue.main.async { self?.enhancerMode = enabled } }
+        }.resume()
+    }
+
+    func setExtraBass(_ enabled: Bool) {
+        guard let url = URL(string: "\(baseURL)/main/setExtraBass?enable=\(enabled)") else { return }
+        URLSession.shared.dataTask(with: url) { [weak self] _, _, error in
+            if error == nil { DispatchQueue.main.async { self?.extraBassMode = enabled } }
+        }.resume()
+    }
+
+    func setAdaptiveDRC(_ enabled: Bool) {
+        guard let url = URL(string: "\(baseURL)/main/setAdaptiveDrc?enable=\(enabled)") else { return }
+        URLSession.shared.dataTask(with: url) { [weak self] _, _, error in
+            if error == nil { DispatchQueue.main.async { self?.adaptiveDRC = enabled } }
+        }.resume()
+    }
+
+    func setToneControl(bass: Int, treble: Int) {
+        guard let url = URL(string: "\(baseURL)/main/setToneControl?mode=manual&bass=\(bass)&treble=\(treble)") else { return }
+        URLSession.shared.dataTask(with: url) { [weak self] _, _, error in
+            if error == nil {
+                DispatchQueue.main.async {
+                    self?.toneControlBass = bass
+                    self?.toneControlTreble = treble
+                }
+            }
+        }.resume()
+    }
+
+    func setSubwooferVolume(_ value: Int) {
+        guard let url = URL(string: "\(baseURL)/main/setSubwooferVolume?volume=\(value)") else { return }
+        URLSession.shared.dataTask(with: url) { [weak self] _, _, error in
+            if error == nil { DispatchQueue.main.async { self?.subwooferVolume = value } }
+        }.resume()
+    }
+
+    func setDialogueLevel(_ value: Int) {
+        dialogueLevel = value
+        guard let url = URL(string: "\(baseURL)/main/setDialogueLevel?value=\(value)") else { return }
+        URLSession.shared.dataTask(with: url) { _, _, _ in }.resume()
+    }
+
+    func setSoundProgram(_ program: String) {
+        guard let enc = program.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+              let url = URL(string: "\(baseURL)/main/setSoundProgram?program=\(enc)") else { return }
+        URLSession.shared.dataTask(with: url) { [weak self] _, _, error in
+            if error == nil { DispatchQueue.main.async { self?.soundProgram = program } }
+        }.resume()
+    }
+
+    // MARK: - Music Center
+
+    func fetchRecentInfo() {
+        guard let url = URL(string: "\(baseURL)/netusb/getRecentInfo") else { return }
+        URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
+            guard let self, let data,
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let list = json["recent_info"] as? [[String: Any]] else { return }
+            DispatchQueue.main.async {
+                self.recentItems = Array(list.enumerated().compactMap { idx, item in
+                    let inputId = item["input"] as? String ?? "unknown"
+                    guard inputId != "unknown" else { return nil }
+                    let text   = item["text"] as? String ?? ""
+                    let artURL = item["albumart_url"] as? String ?? ""
+                    return NetRadioRecentItem(id: idx, text: text, albumArtURL: artURL)
+                }.prefix(9))
+            }
+        }.resume()
+    }
+
+    func fetchPresetInfo() {
+        guard let url = URL(string: "\(baseURL)/netusb/getPresetInfo") else { return }
+        URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
+            guard let self, let data,
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let list = json["preset_info"] as? [[String: Any]] else { return }
+            DispatchQueue.main.async {
+                self.presetItems = list.enumerated().compactMap { idx, item in
+                    let inputId = item["input"] as? String ?? "unknown"
+                    let text    = item["text"]  as? String ?? ""
+                    guard inputId != "unknown",
+                          !text.trimmingCharacters(in: .whitespaces).isEmpty else { return nil }
+                    return NetRadioPreset(id: idx + 1, text: text)
+                }
+            }
+        }.resume()
+    }
+
+    func fetchFuncStatus() {
+        guard let url = URL(string: "\(baseURL)/system/getFuncStatus") else { return }
+        URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
+            guard let self, let data,
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
+            DispatchQueue.main.async {
+                if let inputList = json["input_list"] as? [[String: Any]] {
+                    let ids = inputList.compactMap { $0["id"] as? String }
+                    if !ids.isEmpty {
+                        self.availableInputs = ids
+                        return
+                    }
+                }
+                self.availableInputs = YamahaAPIService.allSources.map { $0.value }
+            }
+        }.resume()
+    }
+
+    func recallRecentItem(_ num: Int) {
+        guard let url = URL(string: "\(baseURL)/netusb/recallRecentItem?num=\(num)&zone=main") else { return }
+        URLSession.shared.dataTask(with: url) { _, _, _ in }.resume()
+    }
+
+    func playPresetInMusicCenter(_ num: Int) {
+        let wasOnNetRadio = currentInput.lowercased() == "net_radio"
+        if wasOnNetRadio {
+            recallPreset(num) { _ in }
+        } else {
+            setInput("net_radio") { [weak self] _ in
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                    self?.recallPreset(num) { _ in }
+                }
+            }
+        }
+    }
+
+    func setSurroundDecoderType(_ type: String) {
+        guard let enc = type.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+              let url = URL(string: "\(baseURL)/main/setSurroundDecoderType?type=\(enc)") else { return }
+        URLSession.shared.dataTask(with: url) { [weak self] _, _, error in
+            if error == nil { DispatchQueue.main.async { self?.surroundDecoderType = type } }
+        }.resume()
+    }
+
     // MARK: - Helpers
 
     private func setActiveScene(_ scene: Int?) {
@@ -511,6 +693,44 @@ class YamahaAPIService: ObservableObject {
         }.resume()
     }
 
+    func fetchSignalInfo() {
+        guard powerState == .on,
+              let url = URL(string: "\(baseURL)/main/getSignalInfo") else { return }
+        URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
+            guard let self, let data,
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  (json["response_code"] as? Int) == 0,
+                  let audio = json["audio"] as? [String: Any] else { return }
+            DispatchQueue.main.async {
+                self.audioFormat   = (audio["format"] as? String) ?? ""
+                self.audioChannels = (audio["fs"]     as? String) ?? ""
+            }
+        }.resume()
+    }
+
+    func fetchDeviceInfo() {
+        guard let url = URL(string: "\(baseURL)/system/getDeviceInfo") else { return }
+        URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
+            guard let self, let data,
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  (json["response_code"] as? Int) == 0 else { return }
+            DispatchQueue.main.async {
+                self.deviceModel = (json["model_name"] as? String) ?? ""
+                if let ver = json["system_version"] as? Double {
+                    self.deviceFirmware = String(format: "%.2f", ver)
+                } else if let ver = json["system_version"] as? String {
+                    self.deviceFirmware = ver
+                }
+            }
+        }.resume()
+    }
+
+    func togglePlayback() {
+        guard powerState == .on else { return }
+        let action = playbackStatus == "play" ? "pause" : "play"
+        setPlayback(action)
+    }
+
     // MARK: - Sequence
 
     func powerOnWithInput(_ input: String, completion: @escaping (Error?) -> Void) {
@@ -536,6 +756,8 @@ class YamahaAPIService: ObservableObject {
 
     // MARK: - Notifications
 
+    // MARK: - Notifications
+
     private func sendTransitionNotification(newState: PowerState) {
         let content = UNMutableNotificationContent()
         content.title = "Yamaha Controller"
@@ -551,4 +773,17 @@ class YamahaAPIService: ObservableObject {
         let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
         UNUserNotificationCenter.current().add(request, withCompletionHandler: nil)
     }
+}
+
+// MARK: - Music Center Models
+
+struct NetRadioRecentItem: Identifiable, Equatable {
+    let id: Int
+    let text: String
+    let albumArtURL: String
+}
+
+struct NetRadioPreset: Identifiable {
+    let id: Int
+    let text: String
 }

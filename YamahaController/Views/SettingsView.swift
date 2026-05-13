@@ -154,6 +154,7 @@ struct SettingsView: View {
                     }
                 }
 
+
                 // Manual input — shown after error or "Change" tap
                 if showManual {
                     HStack(spacing: 6) {

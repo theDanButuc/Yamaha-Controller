@@ -1,11 +1,10 @@
 import SwiftUI
 
 private struct CloseButton: View {
-    let action: () -> Void
     @State private var isHovered = false
 
     var body: some View {
-        Button(action: action) {
+        Button(action: { NotificationCenter.default.post(name: .init("closePopover"), object: nil) }) {
             ZStack {
                 Circle()
                     .fill(Color(red: 0.98, green: 0.27, blue: 0.27))
@@ -19,18 +18,15 @@ private struct CloseButton: View {
         }
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }
-        .help("Quit Yamaha Controller")
+        .help("Close")
     }
 }
 
 struct PopoverView: View {
-    @State private var showingSettings = false
-
     var body: some View {
         VStack(spacing: 0) {
             // ── Header ────────────────────────────────────────────────
             ZStack {
-                // Centered logo + title
                 HStack(spacing: 6) {
                     Image(nsImage: {
                         if let url = Bundle.main.url(forResource: "yamaha_white", withExtension: "png"),
@@ -45,21 +41,19 @@ struct PopoverView: View {
                         .font(.headline)
                 }
 
-                // Left: close, Right: gear
                 HStack {
-                    CloseButton { NSApplication.shared.terminate(nil) }
+                    CloseButton()
                     Spacer()
                     Button {
-                        withAnimation(.easeInOut(duration: 0.15)) {
-                            showingSettings.toggle()
-                        }
+                        withAnimation(.easeInOut(duration: 0.25)) { AppUIState.shared.toggleSettings() }
+                        NSApp.windows.first(where: { $0.canBecomeMain })?.makeKeyAndOrderFront(nil)
                     } label: {
-                        Image(systemName: showingSettings ? "xmark.circle.fill" : "gear")
+                        Image(systemName: "gearshape")
                             .font(.system(size: 16))
-                            .foregroundColor(showingSettings ? .secondary : .primary)
+                            .foregroundColor(.primary)
                     }
                     .buttonStyle(.plain)
-                    .help(showingSettings ? "Close Settings" : "Settings")
+                    .help("Settings")
                 }
             }
             .padding(.horizontal)
@@ -67,38 +61,29 @@ struct PopoverView: View {
 
             Divider()
 
-            if showingSettings {
-                SettingsView()
-                    .frame(width: 300)
-                    .transition(.opacity)
-            } else {
-                VStack(alignment: .leading, spacing: 0) {
-                    ReceiverDisplayView()
-                        .padding(.horizontal)
-                        .padding(.top, 10)
-                        .padding(.bottom, 6)
+            VStack(alignment: .leading, spacing: 0) {
+                ReceiverDisplayView()
+                    .padding(.horizontal)
+                    .padding(.top, 10)
+                    .padding(.bottom, 6)
 
-                    Divider()
+                Divider()
 
-                    ManualControlsView()
-                        .padding()
+                ManualControlsView()
+                    .padding()
 
-                    Divider()
+                Divider()
 
-                    SceneButtonsView()
-                        .padding()
+                SceneButtonsView()
+                    .padding()
 
-                    Divider()
+                Divider()
 
-                    TransportControlsView()
-                        .padding(.horizontal)
-                        .padding(.vertical, 8)
-
-                }
-                .frame(width: 300)
-                .transition(.opacity)
-
+                TransportControlsView()
+                    .padding(.horizontal)
+                    .padding(.vertical, 8)
             }
+            .frame(width: 300)
         }
         .frame(width: 300)
     }

@@ -127,7 +127,7 @@ struct TransportControlsView: View {
                 TransportButton(
                     label: "repeat", systemImage: repeatIcon,
                     width: 40, isActive: isRepeating,
-                    isDisabled: off || isTuner || api.repeatAvailable.isEmpty
+                    isDisabled: off || isTuner
                 ) { api.cycleRepeat() }
             }
 

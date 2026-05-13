@@ -17,7 +17,7 @@ DIST_DIR="$PROJECT_DIR/dist"
 APP_NAME="Yamaha Controller"
 EXECUTABLE="YamahaController"
 BUNDLE_ID="com.yamaha-controller"
-VERSION="1.2.0"
+VERSION="1.3.0"
 UNIVERSAL=false
 
 while [[ $# -gt 0 ]]; do
@@ -133,11 +133,11 @@ cat > "$APP_BUNDLE/Contents/Info.plist" <<PLIST
     <string>.</string>
     <key>NSHighResolutionCapable</key>
     <true/>
-    <key>LSUIElement</key>
-    <true/>
     <key>NSAppTransportSecurity</key>
     <dict>
         <key>NSAllowsLocalNetworking</key>
+        <true/>
+        <key>NSAllowsArbitraryLoads</key>
         <true/>
     </dict>
     <key>NSUserNotificationsUsageDescription</key>

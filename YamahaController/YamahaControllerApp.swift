@@ -5,7 +5,14 @@ struct YamahaControllerApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     var body: some Scene {
-        // No windows — menu bar only. Settings scene required to satisfy @main.
-        Settings { EmptyView() }
+        WindowGroup {
+            MainWindowView()
+        }
+        .windowResizability(.contentSize)
+
+        Settings {
+            SettingsView()
+                .frame(width: 300)
+        }
     }
 }

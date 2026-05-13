@@ -4,12 +4,16 @@
   <img src="screenshots/icon.png" width="100" alt="App Icon" />
 </p>
 
-A native macOS menu bar application for controlling **Yamaha AV receivers** over your local network — no third-party apps, no subscriptions, no cloud.
+A native macOS application for controlling **Yamaha AV receivers** over your local network — no third-party apps, no subscriptions, no cloud.
 
 <p align="center">
-  <img src="screenshots/UI.png" width="300" alt="Main UI" />
-  &nbsp;&nbsp;&nbsp;
-  <img src="screenshots/Settings.png" width="300" alt="Settings" />
+  <img src="screenshots/UI.png" width="220" alt="Main UI" />
+</p>
+
+<p align="center">
+  <img src="screenshots/Settings.png" width="360" alt="Music Center + Settings" />
+  &nbsp;&nbsp;
+  <img src="screenshots/Settings 1.png" width="360" alt="Music Center + Audio Settings" />
 </p>
 
 ---
@@ -17,7 +21,8 @@ A native macOS menu bar application for controlling **Yamaha AV receivers** over
 ## Features
 
 ### Receiver Display
-A retro LCD-style panel at the top of the popover shows real-time receiver state, rendered in **Bitcount Prop Single ExtraLight** — a bitmap display font that matches the aesthetic of real audio equipment:
+A retro LCD-style panel shows real-time receiver state, rendered in **Bitcount Prop Single ExtraLight** — a bitmap display font that matches the aesthetic of real audio equipment:
+- **Signal format** — audio format and sample rate (e.g. `DOLBY DIGITAL PLUS · 48 KHZ`) shown at the top when available
 - **Current input source** — large phosphor-style display
 - **Volume** — in dB when available, raw value as fallback
 - **Sound mode** — DSP/surround program (Straight, Stereo, Surround Decoder, etc.)
@@ -32,17 +37,14 @@ A compact metallic circular button controls the receiver power state:
 - Tap to toggle between **On** and **Standby**
 - White power icon; glows with the accent color when the receiver is on
 - Animated press feedback
-- **Last-source restore**: powers back on to whichever input was active before standby — Spotify, TV, Radio, or anything else
+- **Last-source restore**: powers back on to whichever input was active before standby
 
 ### Volume Control
 A rotating metallic knob controls the receiver volume:
 - **Graduation ring** — 31 tick marks around the knob, lit with the accent color up to the current level; MIN / MAX labels at the endpoints
-- **Drag** to set volume — drag in a circular arc around the knob (clockwise = up, counterclockwise = down); the knob rotates to follow your gesture in real time
-- **Scroll wheel** — mouse wheel (1 step per click) and trackpad (smooth, accumulator-based) both work anywhere in the popover while it's open
-- **Keyboard shortcuts** — active while the popover is open:
-  - `Cmd ↑` / `Cmd ↓` — volume up / down (1 unit = 0.5 dB per press)
-  - `M` — toggle mute
-- Knob position syncs with the receiver: updates whenever volume changes via keyboard, scroll, or API polling
+- **Drag** to set volume — circular arc gesture; the knob rotates to follow in real time
+- **Scroll wheel** — mouse wheel and trackpad both work
+- **Keyboard shortcuts** — `Cmd ↑` / `Cmd ↓` volume up/down, `M` toggle mute
 
 ### Mute
 A dedicated Mute button sits next to the volume knob:
@@ -50,15 +52,14 @@ A dedicated Mute button sits next to the volume knob:
 - Toggles mute state on the receiver
 
 ### Input Source Buttons
-Four physical keycap-style buttons for quick source switching. Each button is **fully configurable** in Settings — assign any of the 18 supported YXC input sources to any button independently.
-
-- White label when inactive; accent-colored with a glow when the source is active
+Four physical keycap-style buttons for quick source switching, fully configurable in Settings:
+- White label when inactive; accent-colored with a glow when active
 - LED indicator dot below each button
-- **Power-on shortcut**: tapping a source button while the receiver is in standby powers it on directly to that source
-- State syncs with the receiver — changing source via the remote control is reflected in the UI within a few seconds
+- **Power-on shortcut**: tapping a source button while standby powers on directly to that source
+- State syncs with the receiver within a few seconds
 
 ### Transport Controls
-A compact set of transport buttons below the source keys:
+A compact set of transport buttons:
 
 | Row | Buttons | Action |
 |-----|---------|--------|
@@ -66,16 +67,27 @@ A compact set of transport buttons below the source keys:
 | 2 | `<<` `■` `‖` `>>` | Tune − / Sound mode cycle / Band toggle (FM↔AM) / Tune + |
 | 3 | `<` `>` | Preset − / Preset + |
 
-- **Shuffle** (`⇄`) — toggles shuffle on/off; lit with the accent color when active; disabled for Tuner input
-- **Repeat** (`↻`) — cycles through off → all → one → off; icon changes to `↻1` for repeat-one; lit when active; disabled for Tuner input
-- **Play** (`▶`) — lit when the receiver is actively playing
-- **Pause** (`‖`) — lit when paused
-- **Stop** (`■`) — lit when stopped (streaming sources only); cycles the sound program on Tuner
-
 Context-sensitive: `■` stops playback on streaming sources and cycles the sound program on Tuner; `‖` pauses on streaming and toggles FM/AM on Tuner; `< >` cycle through net presets on Net Radio and switch tuner presets on Tuner.
 
+### Audio Settings
+A dedicated panel (accessible via the sliders icon in the header) exposes the full YXC audio processing chain:
+- **Subwoofer Volume** — slider from −12 to +12; double-click to reset to 0
+- **Bass** — tone control bass slider from −12 to +12
+- **Treble** — tone control treble slider from −12 to +12
+- **Dialogue Level** — four metallic buttons (0–3) with active glow
+- **Audio Features** — four toggle buttons on one row: Pure Direct / Enhancer / Extra Bass / Adaptive DRC
+- **Sound Program** — full list fetched dynamically from the receiver via `getSoundProgramList`
+- **Surround Decoder** — dropdown visible only when Sound Program is set to Surround Decoder
+
+### Music Center
+A panel (accessible via the music notes icon in the header) that slides in from the left, independently of the right-side panels:
+- **Recent Played** — list of recently played Net Radio stations; tap to recall and play
+- **Favourites** — the 5 receiver presets with accent-colored number badges; tap to switch to Net Radio and recall preset
+- **Sources** — all available receiver inputs with SF Symbol icons; active source highlighted; tap to switch
+- All three sections are collapsible `DisclosureGroup` menus with persistent open/closed state
+
 ### Color Scheme
-Five accent colors to choose from in Settings — changes the LCD display, button LEDs, power button, volume knob graduation, and all highlights across the entire UI simultaneously:
+Five accent colors in Settings — changes the LCD display, button LEDs, power button, volume knob graduation, and all highlights simultaneously:
 
 🔴 Red &nbsp; 🟠 Orange &nbsp; 🟡 Yellow &nbsp; 🟢 Green &nbsp; 🔵 Blue
 
@@ -83,8 +95,8 @@ Five accent colors to choose from in Settings — changes the LCD display, butto
 Automatically powers on the receiver at a scheduled time using **launchd**:
 - Enable/disable toggle
 - Hour and minute picker
-- **Day-of-week selector** — toggle individual days (Mo Tu We Th Fr Sa Su); at least one day must remain selected
-- **Source selector** — all 18 YXC input sources available
+- **Day-of-week selector** — toggle individual days (Mo Tu We Th Fr Sa Su)
+- **Source selector** — all supported YXC input sources
 - **Preset picker** (1–5) for Net Radio
 - Writes a `launchd` plist to `~/Library/LaunchAgents/` — fires even after Mac sleep/wake
 
@@ -96,17 +108,13 @@ Automatically puts the receiver in standby at a scheduled time:
 - Also managed via `launchd`
 
 ### Receiver Discovery
-The app automatically finds Yamaha receivers on the local network using Bonjour/mDNS:
-- **Discover Receiver** button scans the network and verifies each device via the YXC API
-- If one receiver is found, it is selected automatically
-- If multiple receivers are found, a list is shown for manual selection
-- Discovery times out after 10 seconds with an error message
-- Manual IP entry is available as fallback via the **Change** link
-
-Status is refreshed immediately every time the popover is opened — no waiting for the next poll cycle.
+Automatically finds Yamaha receivers on the local network using Bonjour/mDNS:
+- **Discover Receiver** button scans and verifies devices via the YXC API
+- Auto-selects when exactly one receiver is found; shows a list for multiple
+- Manual IP entry available as fallback
 
 ### Notifications
-The app sends a macOS notification when the receiver is turned on or off automatically by a schedule.
+macOS notification when the receiver is turned on or off automatically by a schedule.
 
 ---
 
@@ -118,14 +126,26 @@ The app communicates with the receiver using the **Yamaha Extended Control (YXC)
 
 | Endpoint | Purpose |
 |----------|---------|
-| `GET /main/getStatus` | Power state, input, volume, mute, sound program |
+| `GET /main/getStatus` | Power state, input, volume, mute, sound program, audio settings |
 | `GET /main/setPower?power=on\|standby` | Power on / standby |
 | `GET /main/setInput?input={input}` | Switch input source |
 | `GET /main/setVolume?volume={n}` | Set volume level |
 | `GET /main/setMute?enable=true\|false` | Mute / unmute |
 | `GET /main/getSoundProgramList` | Fetch available DSP modes |
 | `GET /main/setSoundProgram?program={p}` | Set DSP/surround mode |
+| `GET /main/setSurroundDecoderType?type={t}` | Set surround decoder type |
+| `GET /main/setPureDirect?enable=true\|false` | Pure Direct mode |
+| `GET /main/setEnhancer?enable=true\|false` | Enhancer toggle |
+| `GET /main/setExtraBass?enable=true\|false` | Extra Bass toggle |
+| `GET /main/setAdaptiveDrc?enable=true\|false` | Adaptive DRC toggle |
+| `GET /main/setToneControl?mode=manual&bass={n}&treble={n}` | Bass / Treble |
+| `GET /main/setSubwooferVolume?volume={n}` | Subwoofer level |
+| `GET /main/setDialogueLevel?value={n}` | Dialogue level (0–3) |
+| `GET /main/getSignalInfo` | Current audio format and sample rate |
 | `GET /netusb/recallPreset?zone=main&num={n}` | Recall Net Radio preset |
+| `GET /netusb/getPresetInfo` | Fetch saved presets (Favourites) |
+| `GET /netusb/getRecentInfo` | Recently played Net Radio stations |
+| `GET /netusb/recallRecentItem?num={n}&zone=main` | Play a recent station |
 | `GET /netusb/getPlayInfo` | Now playing, playback state, shuffle/repeat, album art |
 | `GET /netusb/setPlayback?playback={action}` | Play / pause / stop / previous / next |
 | `GET /netusb/toggleShuffle` | Toggle shuffle on/off |
@@ -134,11 +154,13 @@ The app communicates with the receiver using the **Yamaha Extended Control (YXC)
 | `GET /tuner/setBand?band=fm\|am` | Switch tuner band |
 | `GET /tuner/setFreq?band={b}&tuning=up\|down` | Step tuner frequency |
 | `GET /tuner/switchPreset?zone=main&dir=next\|previous` | Cycle tuner presets |
+| `GET /system/getDeviceInfo` | Model name and firmware version |
+| `GET /system/getFuncStatus` | Available input sources |
 
 ### Polling
-- Receiver status is polled every **3 seconds**
-- Now Playing info (track, artist, playback state, shuffle, repeat) is refreshed every **8 seconds** when input is Spotify or Net Radio
-- Optimistic UI updates: input and volume changes are applied immediately in the UI and reverted if the API call fails
+- Receiver status polled every **3 seconds**
+- Now Playing info refreshed every **8 seconds** when input is Spotify or Net Radio
+- Optimistic UI updates: input and volume changes applied immediately, reverted on API failure
 
 ### Scheduling (launchd)
 The app dynamically writes and manages `.plist` files in `~/Library/LaunchAgents/`:
@@ -147,8 +169,6 @@ The app dynamically writes and manages `.plist` files in `~/Library/LaunchAgents
 |----------|-------------|
 | Morning Alarm | `com.yamaha-controller.morning` |
 | Auto Off | `com.yamaha-controller.poweroff` |
-
-When a schedule is enabled or its settings change, the app removes the old plist, writes a new one, and runs `launchctl bootstrap` to register it. When disabled, it runs `launchctl bootout` and deletes the file.
 
 ---
 
@@ -160,7 +180,7 @@ When a schedule is enabled or its settings change, the app removes the old plist
 | UI Framework | SwiftUI |
 | Networking | URLSession (native, no dependencies) |
 | Scheduling | launchd via `launchctl` + shell scripts |
-| Persistence | UserDefaults |
+| Persistence | UserDefaults / AppStorage |
 | Notifications | UserNotifications framework |
 | Fonts | Bitcount Prop Single ExtraLight (OFL) |
 | Build | `swiftc` via custom `scripts/build.sh` |
@@ -180,7 +200,7 @@ No external Swift packages. No CocoaPods. No SPM dependencies. Pure Apple framew
 
 ## Installation
 
-1. Download `YamahaController-v1.2.0.dmg` from [Releases](../../releases)
+1. Download `YamahaController-v1.3.0.dmg` from [Releases](../../releases)
 2. Open the DMG and drag **Yamaha Controller** to your Applications folder
 3. Right-click → **Open** on first launch (app is ad-hoc signed, not notarized)
 4. Click the menu bar icon and open **Settings** (gear icon)
@@ -207,43 +227,46 @@ The build script compiles all Swift sources with `swiftc`, assembles the `.app` 
 
 ```
 YamahaController/
-├── AppDelegate.swift               # NSStatusItem, NSPopover, menu bar icon, key monitor
-├── YamahaControllerApp.swift       # App entry point (@main)
+├── AppDelegate.swift               # NSStatusItem, NSPopover, menu bar icon, main menu
+├── YamahaControllerApp.swift       # App entry point (@main), WindowGroup + Settings scene
 ├── Views/
-│   ├── PopoverView.swift           # Root popover layout with centered header
+│   ├── MainWindowView.swift        # Main window layout with sliding left/right panels
+│   ├── PopoverView.swift           # Menu bar popover layout
 │   ├── ReceiverDisplayView.swift   # LCD-style display with Bitcount font, album art, marquee
 │   ├── ManualControlsView.swift    # Power button + volume knob + mute button
 │   ├── VolumeKnobView.swift        # Rotating metallic knob with rotational drag gesture
-│   ├── PowerButtonView.swift       # Circular metallic power button with power icon
+│   ├── PowerButtonView.swift       # Circular metallic power button
 │   ├── SceneButtonsView.swift      # Input source keycap buttons
 │   ├── TransportControlsView.swift # Transport buttons incl. shuffle and repeat
 │   ├── KeycapComponents.swift      # Shared keycap shape and press style
+│   ├── AudioSettingsView.swift     # Audio panel: tone, subwoofer, features, sound program
+│   ├── MusicCenterView.swift       # Music Center: recent played, favourites, sources
 │   ├── SettingsView.swift          # IP + color scheme + source button config + schedules
 │   ├── MorningAlarmView.swift      # Morning alarm controls
 │   ├── AutoOffView.swift           # Auto off controls
-│   └── StatusSectionView.swift     # Status section
+│   └── AboutView.swift             # About panel with version, model, firmware
 ├── Models/
 │   ├── YamahaSettings.swift        # UserDefaults-backed settings
+│   ├── AppUIState.swift            # Panel visibility state (Music Center / Audio / Settings)
 │   └── AppColors.swift             # Color scheme extension
 ├── Services/
-│   ├── YamahaAPIService.swift      # All YXC HTTP calls + polling
+│   ├── YamahaAPIService.swift      # All YXC HTTP calls + polling + models
 │   ├── SchedulerService.swift      # launchd plist management
 │   └── DiscoveryService.swift      # Bonjour/mDNS receiver discovery
 ├── Resources/
 │   ├── Volume.png                  # Metallic knob asset
-│   ├── PowerButton.png             # (unused, kept for reference)
-│   ├── Button.png                  # Circular button asset (power, source keys, mute)
-│   └── BitcountPropSingle-ExtraLight.ttf  # Display font (OFL)
+│   ├── Button.png                  # Circular button asset (power, source keys, mute, sliders)
+│   ├── BitcountPropSingle-ExtraLight.ttf  # Display font (OFL)
+│   └── BitcountPropSingle-Regular.ttf
 └── scripts/
-    ├── build.sh                    # Compile + bundle + DMG
-    └── make_dmg.sh                 # DMG creation helper
+    └── build.sh                    # Compile + bundle + sign + DMG
 ```
 
 ---
 
 ## Settings Persistence
 
-All settings are stored in `UserDefaults`:
+All settings stored in `UserDefaults` / `AppStorage`:
 
 | Key | Type | Description |
 |-----|------|-------------|
@@ -261,6 +284,9 @@ All settings are stored in `UserDefaults`:
 | `autooff_hour` | Int | Auto off hour (0–23) |
 | `autooff_minute` | Int | Auto off minute (0–59) |
 | `autooff_weekdays` | [Int] | Selected days (0=Sun … 6=Sat); default all 7 |
+| `mc_recent_expanded` | Bool | Music Center — Recent Played section open/closed |
+| `mc_favourites_expanded` | Bool | Music Center — Favourites section open/closed |
+| `mc_sources_expanded` | Bool | Music Center — Sources section open/closed |
 
 ---
 

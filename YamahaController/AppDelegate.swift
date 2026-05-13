@@ -10,15 +10,28 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
     private var popover: NSPopover?
     private var cancellables = Set<AnyCancellable>()
     private var eventMonitor: Any?
-    private var keyMonitor: Any?
+    private var playbackMenu: NSMenu?
+    private var aboutWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        NSApp.setActivationPolicy(.accessory)
+        NSApp.setActivationPolicy(.regular)
         requestNotificationPermission()
         setupStatusItem()
         setupPopover()
         observePowerState()
         YamahaAPIService.shared.startPolling()
+        buildMainMenu()
+    }
+
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        return true
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
+        if !hasVisibleWindows {
+            NSApp.windows.first(where: { $0.canBecomeMain })?.makeKeyAndOrderFront(nil)
+        }
+        return true
     }
 
     // MARK: - Status Item
@@ -35,6 +48,18 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
             .receive(on: DispatchQueue.main)
             .sink { [weak self] state in self?.updateIcon(for: state) }
             .store(in: &cancellables)
+
+        YamahaAPIService.shared.$shuffleMode
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] mode in
+                self?.playbackMenu?.item(withTitle: "Shuffle")?.state = mode != "off" ? .on : .off
+            }.store(in: &cancellables)
+
+        YamahaAPIService.shared.$repeatMode
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] mode in
+                self?.playbackMenu?.item(withTitle: "Repeat")?.state = mode != "off" ? .on : .off
+            }.store(in: &cancellables)
     }
 
     private func updateIcon(for state: PowerState) {
@@ -64,14 +89,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
         ) else { return sfSymbolFallback(for: state) }
 
-        // Draw Yamaha logo (flip for CG bottom-left origin)
         ctx.saveGState()
         ctx.translateBy(x: 0, y: CGFloat(px))
         ctx.scaleBy(x: 1, y: -1)
         ctx.draw(logoCG, in: CGRect(x: 0, y: 0, width: px, height: px))
         ctx.restoreGState()
 
-        // Tint with power state colour
         switch state {
         case .on:
             ctx.setBlendMode(.sourceAtop)
@@ -82,7 +105,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
             ctx.setFillColor(NSColor.systemRed.cgColor)
             ctx.fill(CGRect(x: 0, y: 0, width: px, height: px))
         case .unknown:
-            // keep white; will be shown as template
             break
         }
 
@@ -119,6 +141,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
         eventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
             self?.closePopover()
         }
+
+        NotificationCenter.default.addObserver(self, selector: #selector(closePopover),
+                                               name: .init("closePopover"), object: nil)
     }
 
     @objc private func togglePopover() {
@@ -132,47 +157,122 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
                 self?.popover?.contentViewController?.view.window?.makeKey()
             }
             YamahaAPIService.shared.fetchStatus()
-            startKeyMonitor()
         }
     }
 
-    private func closePopover() {
+    @objc private func closePopover() {
         popover?.performClose(nil)
-        stopKeyMonitor()
     }
 
-    private func startKeyMonitor() {
-        guard keyMonitor == nil else { return }
-        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            guard YamahaAPIService.shared.powerState == .on else { return event }
-            let flags = event.modifierFlags
-            // Arrow keys always include .numericPad alongside .command, so use contains() not ==
-            let cmdOnly = flags.contains(.command)
-                && !flags.contains(.shift) && !flags.contains(.option) && !flags.contains(.control)
-            let noMods = flags.intersection([.command, .shift, .option, .control]).isEmpty
+    // MARK: - Main Menu
 
-            if cmdOnly {
-                if event.keyCode == 126 {       // Cmd+↑
-                    YamahaAPIService.shared.volumeUp()
-                    return nil
-                } else if event.keyCode == 125 { // Cmd+↓
-                    YamahaAPIService.shared.volumeDown()
-                    return nil
-                }
-            } else if noMods, event.charactersIgnoringModifiers?.lowercased() == "m" {
-                YamahaAPIService.shared.toggleMute()
-                return nil
-            }
-            return event
+    private func buildMainMenu() {
+        let mainMenu = NSMenu()
+
+        // ── App menu ─────────────────────────────────────────────────────
+        let appItem = NSMenuItem()
+        mainMenu.addItem(appItem)
+        let appMenu = NSMenu()
+        appItem.submenu = appMenu
+
+        appMenu.addItem(withTitle: "About Yamaha Controller", action: #selector(showAbout), keyEquivalent: "")
+        appMenu.addItem(.separator())
+        appMenu.addItem(withTitle: "Settings…", action: #selector(menuToggleSettings), keyEquivalent: ",")
+        appMenu.addItem(.separator())
+        let hideItem = appMenu.addItem(withTitle: "Hide Yamaha Controller", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
+        hideItem.keyEquivalentModifierMask = .command
+        let hideOthers = appMenu.addItem(withTitle: "Hide Others", action: #selector(NSApplication.hideOtherApplications(_:)), keyEquivalent: "h")
+        hideOthers.keyEquivalentModifierMask = [.command, .option]
+        appMenu.addItem(withTitle: "Show All", action: #selector(NSApplication.unhideAllApplications(_:)), keyEquivalent: "")
+        appMenu.addItem(.separator())
+        let quitItem = appMenu.addItem(withTitle: "Quit Yamaha Controller", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        quitItem.keyEquivalentModifierMask = .command
+
+        // ── Playback menu ────────────────────────────────────────────────
+        let pbItem = NSMenuItem()
+        mainMenu.addItem(pbItem)
+        let pbMenu = NSMenu(title: "Playback")
+        pbItem.submenu = pbMenu
+        playbackMenu = pbMenu
+
+        let repeatItem = NSMenuItem(title: "Repeat", action: #selector(menuRepeat), keyEquivalent: "r")
+        repeatItem.keyEquivalentModifierMask = []
+        pbMenu.addItem(repeatItem)
+
+        let prevItem = NSMenuItem(title: "Previous", action: #selector(menuPrevious),
+                                  keyEquivalent: String(UnicodeScalar(NSLeftArrowFunctionKey)!))
+        prevItem.keyEquivalentModifierMask = .command
+        pbMenu.addItem(prevItem)
+
+        let playItem = NSMenuItem(title: "Play", action: #selector(menuPlay), keyEquivalent: "p")
+        playItem.keyEquivalentModifierMask = []
+        pbMenu.addItem(playItem)
+
+        let nextItem = NSMenuItem(title: "Next", action: #selector(menuNext),
+                                  keyEquivalent: String(UnicodeScalar(NSRightArrowFunctionKey)!))
+        nextItem.keyEquivalentModifierMask = .command
+        pbMenu.addItem(nextItem)
+
+        let shuffleItem = NSMenuItem(title: "Shuffle", action: #selector(menuShuffle), keyEquivalent: "s")
+        shuffleItem.keyEquivalentModifierMask = []
+        pbMenu.addItem(shuffleItem)
+
+        pbMenu.addItem(.separator())
+
+        let volUpItem = NSMenuItem(title: "Volume Up", action: #selector(menuVolumeUp),
+                                   keyEquivalent: String(UnicodeScalar(NSUpArrowFunctionKey)!))
+        volUpItem.keyEquivalentModifierMask = .command
+        pbMenu.addItem(volUpItem)
+
+        let volDownItem = NSMenuItem(title: "Volume Down", action: #selector(menuVolumeDown),
+                                     keyEquivalent: String(UnicodeScalar(NSDownArrowFunctionKey)!))
+        volDownItem.keyEquivalentModifierMask = .command
+        pbMenu.addItem(volDownItem)
+
+        let muteItem = NSMenuItem(title: "Mute", action: #selector(menuMute), keyEquivalent: "m")
+        muteItem.keyEquivalentModifierMask = []
+        pbMenu.addItem(muteItem)
+
+        NSApp.mainMenu = mainMenu
+    }
+
+    // MARK: - About
+
+    @objc private func showAbout() {
+        if aboutWindow == nil {
+            let hosting = NSHostingController(rootView: AboutView())
+            let win = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 280, height: 230),
+                styleMask: [.titled, .closable],
+                backing: .buffered,
+                defer: false
+            )
+            win.title = "About Yamaha Controller"
+            win.contentViewController = hosting
+            win.isReleasedWhenClosed = false
+            win.center()
+            aboutWindow = win
         }
+        aboutWindow?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
     }
 
-    private func stopKeyMonitor() {
-        if let monitor = keyMonitor {
-            NSEvent.removeMonitor(monitor)
-            keyMonitor = nil
-        }
+    // MARK: - Playback menu actions
+
+    @objc private func menuToggleSettings() {
+        AppUIState.shared.toggleSettings()
+        NSApp.windows.first(where: { $0.canBecomeMain })?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
     }
+
+    @objc private func menuRepeat()     { YamahaAPIService.shared.cycleRepeat() }
+    @objc private func menuPrevious()   { YamahaAPIService.shared.setPlayback("previous") }
+    @objc private func menuPlay()       { YamahaAPIService.shared.togglePlayback() }
+    @objc private func menuNext()       { YamahaAPIService.shared.setPlayback("next") }
+    @objc private func menuShuffle()    { YamahaAPIService.shared.toggleShuffle() }
+    @objc private func menuVolumeUp()   { YamahaAPIService.shared.volumeUp() }
+    @objc private func menuVolumeDown() { YamahaAPIService.shared.volumeDown() }
+    @objc private func menuMute()       { YamahaAPIService.shared.toggleMute() }
 
     // MARK: - Notifications
 

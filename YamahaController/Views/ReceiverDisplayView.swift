@@ -64,6 +64,12 @@ struct ReceiverDisplayView: View {
     }
 
     // Whether current input has now-playing info
+    private var signalLabel: String {
+        guard isOn, !api.audioFormat.isEmpty else { return "" }
+        let ch = api.audioChannels.isEmpty ? "" : " \(api.audioChannels)"
+        return (api.audioFormat + ch).uppercased()
+    }
+
     private var hasNowPlaying: Bool {
         let input = api.currentInput.lowercased()
         return api.powerState == .on &&
@@ -98,6 +104,21 @@ struct ReceiverDisplayView: View {
             }
 
             VStack(spacing: 0) {
+
+                // ── Row 0: Signal format (centered, above INPUT) ─────────
+                if !signalLabel.isEmpty {
+                    Text(signalLabel)
+                        .font(.custom("BitcountPropSingle-ExtraLight", size: 9))
+                        .foregroundColor(lcdAmber)
+                        .shadow(color: lcdAmberGlow, radius: 2)
+                        .tracking(1.2)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.horizontal, 10)
+                        .padding(.top, 6)
+                        .padding(.bottom, 2)
+                }
 
                 // ── Row 1: INPUT label + status dots ────────────────────
                 HStack {
@@ -243,10 +264,11 @@ struct ReceiverDisplayView: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .frame(height: hasAlbumArt ? 150 : (hasNowPlaying ? 130 : 96))
+        .frame(height: (hasAlbumArt ? 150 : (hasNowPlaying ? 130 : 96)) + (signalLabel.isEmpty ? 0 : 18))
         .animation(.easeInOut(duration: 0.3), value: api.powerState)
         .animation(.easeInOut(duration: 0.25), value: hasNowPlaying)
         .animation(.easeInOut(duration: 0.25), value: hasAlbumArt)
+        .animation(.easeInOut(duration: 0.25), value: signalLabel)
         .animation(.easeInOut(duration: 0.2), value: api.currentInput)
     }
 
